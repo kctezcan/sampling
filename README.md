@@ -11,7 +11,7 @@ The paper is under review. A preprint version can be found here: https://arxiv.o
 
 
 ## Results
-Here we show the results for the proposed l-MALA method as well as the compared methods. Notice the figure is a gif, showing multiple samples for the sampling methods. You can zoom in to see the structural changes in your browser with Ctrl+mouse scroll or in your browser settings. You can find more examples in the gifs folder.
+Here we show the results for the proposed l-MALA method as well as the compared methods. Notice the figure is a gif, showing multiple samples for the sampling methods. You can click on the gif and then zoom in to see the structural changes in your browser with Ctrl+mouse scroll or in your browser settings. You can find more examples in the gifs folder.
 
  The image presented is from a subject from the Human Connectome Project dataset, retrospectively undersampled at a factor of 5.
 
