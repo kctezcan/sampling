@@ -7,7 +7,7 @@ All authors are with the Computer Vision Lab, ETH Zürich, Switzerland. CFB is a
 The main idea is to sampling multiple reconstructions instead of only reconstructing a single image for undersampled MR imaging. This way one can find multiple solutions to the ill-posed inverse problem and can characterize the uncertainty in the solutions as well.
 
 
-The paper is under review. A preprint version can be found here: https://arxiv.org/abs/2010.00042.
+The paper is under review. An older preprint version can be found here: https://arxiv.org/abs/2010.00042.
 
 
 ## Results
