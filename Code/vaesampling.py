@@ -298,22 +298,14 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      if empiricalPrior:
           
           #load the necessary stuff here:
-          if lowres==False and BFcorr==False:
-               stuff = np.load('/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/covariancestuff_legacymodel.npz')
+          if lowres==False and BFcorr==True:
+               stuff = np.load(os.getcwd() + '/../../trained_models/covariances_emp_prior/covariancestuff_legacymodel_bfc.npz')
                lssize=[18,22]
-#               step=1e-3
-               
-          elif lowres==False and BFcorr==True:
-               stuff = np.load('/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/covariancestuff_legacymodel_bfc.npz')
-               lssize=[18,22]
-               
-          elif lowres==True and BFcorr==False:
-               stuff = np.load('/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/covariancestuff_legacymodel_lowres.npz')
-               lssize=[13,15]
-               
+               print("KCT-info: loaded the empirical prior: " + os.getcwd() + '/../../trained_models/covariances_emp_prior/covariancestuff_legacymodel_bfc.npz')
           elif lowres==True and BFcorr==True:
-               stuff = np.load('/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/covariancestuff_legacymodel_bfc_lowres.npz')
+               stuff = np.load(os.getcwd() + '/../../trained_models/covariances_emp_prior/covariancestuff_legacymodel_bfc_lowres.npz')
                lssize=[13,15]
+               print("KCT-info: loaded the empirical prior: " + os.getcwd() + '/../../trained_models/covariances_emp_prior/covariancestuff_legacymodel_bfc_lowres.npz')
 #               step=2e-5
                
                

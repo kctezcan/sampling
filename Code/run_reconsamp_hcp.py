@@ -17,7 +17,17 @@ import SimpleITK as sitk
 
 import argparse    
 import sys  
-import os   
+import os  
+
+
+###############################################################################
+### This script runs on an example slice from the Human Connectome Datbase
+### (HCP) dataset.  It runs
+### 1. a reconstruction based on the deep density priors (DDP) method used to 
+###    initialize the sampling.
+### 2. the sampling method with the output of the VAE decoder as the samples,
+### 3. the samples from the proper posterior
+############################################################################### 
 
 
 
@@ -207,14 +217,14 @@ mode = 'MRIunproc'
 numiter = 102
 
 # reconstruct the image if it does not exist
-if os.path.exists(os.getcwd() + '/../../results/reconstruction/rec_us'+str(usfact)):
+if os.path.exists(os.getcwd() + '/../../results/reconstruction/rec_hcp_us'+str(usfact)):
     print("KCT-info: reconstruction already exists, loading it...")
-    rec_vae = pickle.load(open('../../results/reconstruction/rec_us'+str(usfact),'rb'))
+    rec_vae = pickle.load(open('../../results/reconstruction/rec_hcp_us'+str(usfact),'rb'))
 else:
     rec_vae = vaerecon6.vaerecon(usksp, sensmaps=np.ones_like(usksp), dcprojiter=dcprojiter, lat_dim=60, patchsize=28, contRec='' ,parfact=25, num_iter=numiter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
     rec_vae = rec_vae[0]
     #save the reconstruction
-    pickle.dump(rec_vae, open('../../results/reconstruction/rec_us'+str(usfact),'wb')   )
+    pickle.dump(rec_vae, open('../../results/reconstruction/rec_hcp_us'+str(usfact),'wb')   )
 
 lastiter = int((np.floor(rec_vae.shape[1]/13)-2)*13)
 rec = rec_vae[:,lastiter].reshape([252,308])
@@ -320,7 +330,7 @@ def funmin_cg_ksp(mux, uspat, nsksp, nssx, y, numiter = 10):
      
     return its, errtmps, alphas, b
 
-#now take the images as mean f p(x|y,z)  
+#now take the images as mean x from p(x|y,z)  
     
 # estimate the noise in k-space coilwise
 estim_ksp_ns = 1/usksp[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,0].var()/50
