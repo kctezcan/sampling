@@ -1,12 +1,10 @@
 import numpy as np
 import pickle
 import vaerecon5
+import vaesampling
+import SimpleITK as sitk
 
-import os, sys
-
-from US_pattern import US_pattern
-     
-     
+import os, sys     
 import argparse
 
 
@@ -39,38 +37,10 @@ if not os.path.exists(os.getcwd() + '/../../results/sampling/decoder_samples/'):
     os.mkdir(os.getcwd() + '/../../results/sampling/decoder_samples/')
 
 
-#bases = [ "sess_23_05_2018/EK/",
-#"sess_26_07_2018/VA/",
-#"sess_26_07_2018/KE/",
-#"sess_02_07_2018/CK/",
-#"sess_02_07_2018/TC/",
-#"sess_04_06_2018/KT/",
-#"sess_27_06_2018/FP/"]
 
-parser = argparse.ArgumentParser(prog='PROG')
-parser.add_argument('--sli', type=int, default=3) 
-parser.add_argument('--base', default="sess_26_07_2018/VA/")  #    #sess_23_05_2018/EK/ # sess_02_07_2018/CK/
-parser.add_argument('--usfact', type=float, default=2) 
-parser.add_argument('--contrun', type=int, default=0) 
-parser.add_argument('--skiprecon', type=int, default=1) 
-parser.add_argument('--runsampling', type=int, default=0) 
-parser.add_argument('--runsampling_step2', type=int, default=1) 
-parser.add_argument('--prewhitening', type=int, default=1) 
-parser.add_argument('--dcprojiter', type=int, default=1)  
-parser.add_argument('--onlydciter', type=int, default=0)  
-parser.add_argument('--mask4sampling', type=int, default=1)  
-parser.add_argument('--numinversioniters', type=int, default=30) 
-parser.add_argument('--modelprecval', type=float, default=50) 
-parser.add_argument('--noisemodifier', type=float, default=1) 
-
-
-
-
-args=parser.parse_args()
-
-
-print(args)
-
+###############################################################################
+### Some necessary functions
+###############################################################################
 
 def FT (x):
      #inp: [nx, ny]
@@ -168,391 +138,207 @@ def padslice_2d(array, padslice, rollval = 0):
           
           return tmp
 
-
-
-
-#############################
-
-
-#
-#
-#def FT (x):
-#     #inp: [nx, ny]
-#     #out: [nx, ny]
-#     return np.fft.fftshift(    np.fft.fft2(  x , axes=(0,1)  ),   axes=(0,1)    ) / np.sqrt(252*308)
-#
-#def tFT (x):
-#     #inp: [nx, ny]
-#     #out: [nx, ny]
-#     return np.fft.ifft2(  np.fft.ifftshift( x , axes=(0,1) ),  axes=(0,1)  )   * np.sqrt(252*308)
-#
-#def UFT(x, uspat):
-#     #inp: [nx, ny], [nx, ny]
-#     #out: [nx, ny]
-#     
-#     return uspat*FT(x)
-#
-#def tUFT(x, uspat):
-#     #inp: [nx, ny], [nx, ny]
-#     #out: [nx, ny]
-#     return  tFT( uspat*x )
-
-
 def calc_rmse(rec,imorig):
      return 100*np.sqrt(np.sum(np.square(np.abs(rec) - np.abs(imorig))) / np.sum(np.square(np.abs(imorig))) )
 
+
+###############################################################################
+### Set parameters
+###############################################################################
+parser = argparse.ArgumentParser(prog='PROG')
+#parser.add_argument('--sli', type=int, default=3) 
+#parser.add_argument('--base', default="sess_26_07_2018/VA/")  #    #sess_23_05_2018/EK/ # sess_02_07_2018/CK/
+parser.add_argument('--usfact', type=float, default=3) 
+#parser.add_argument('--contrun', type=int, default=0) 
+#parser.add_argument('--skiprecon', type=int, default=1) 
+#parser.add_argument('--runsampling', type=int, default=0) 
+#parser.add_argument('--runsampling_step2', type=int, default=1) 
+#parser.add_argument('--prewhitening', type=int, default=1) 
+#parser.add_argument('--dcprojiter', type=int, default=1)  
+#parser.add_argument('--onlydciter', type=int, default=0)  
+#parser.add_argument('--mask4sampling', type=int, default=1)  
+#parser.add_argument('--numinversioniters', type=int, default=30) 
+#parser.add_argument('--modelprecval', type=float, default=50) 
+#parser.add_argument('--noisemodifier', type=float, default=1) 
+
+args=parser.parse_args()
+print(args)     
+ 
 ndims=28
 lat_dim=60
 
 mode = 'MRIunproc'#'Melanie_BFC'
 
-USp = US_pattern()
-
 usfact = args.usfact
 
-print(usfact)
 if np.floor(usfact) == usfact: # if it is already an integer
      usfact = int(usfact)
-print(usfact)
 
 
 
-###################
-###### RECON ######
-###################
+###############################################################################
+### Load the input image and the us pattern
+###############################################################################
 
-#dirbase = '/usr/bmicnas01/data-biwi-01/ktezcan/measured_data/measured2/the_h5_files/'+args.base
-#sli= args.sli
-#
-#import h5py
-#f = h5py.File(dirbase+'ddr_sl'+str(sli)+'.h5', 'r')
-#ddr = np.array((f['DS1']))
-#f = h5py.File(dirbase+'ddi_sl'+str(sli)+'.h5', 'r')
-#ddi = np.array((f['DS1']))
-#dd= ddr+1j*ddi
-#dd=np.transpose(dd)
-##          dd=np.transpose(dd,axes=[1,0,2])
-#dd=np.rot90(np.rot90(np.rot90(dd,3),3),3)
-#
-#dd = np.fft.ifftn(np.fft.fftshift(np.fft.fftn(dd,axes=[0,1]),axes=[0,1]),axes=[0,1])
-#
-#
-#f = h5py.File(dirbase+'espsi_sl'+str(sli)+'.h5', 'r')
-#espsi = np.array((f['DS1']))
-#f = h5py.File(dirbase+'espsr_sl'+str(sli)+'.h5', 'r')
-#espsr = np.array((f['DS1']))
-#esps= espsr+1j*espsi
-#esps = np.transpose(esps)
-##               esps=np.transpose(esps,axes=[1,0,2])
-#esps=np.rot90(np.rot90(np.rot90(esps,3),3),3)
-#esps=np.fft.fftshift(esps,axes=[0,1])
-#sensmaps = esps.copy()
-#sensmaps = np.fft.fftshift(sensmaps,axes=[0,1])
-#          
-#
-#R=usfact
-#
-#ddimc = tFT(dd)
-#dd=dd/np.percentile(  np.abs(ddimc).flatten()   ,99)
+#the fully sampled k-space and the coils from ESPIRiT
+dd = np.load(os.getcwd() + '/../example_data/usz_image/sample_usz_image.npy')
+sensmaps = np.load(os.getcwd() + '/../example_data/usz_image/sample_usz_coils.npy')
 
-#################################################################################
-
-dirbase = '/usr/bmicnas01/data-biwi-01/ktezcan/measured_data/measured2/the_h5_files/'+args.base
-sli= args.sli
-
-import h5py
-f = h5py.File(dirbase+'ddr_sl'+str(sli)+'.h5', 'r')
-ddr = np.array((f['DS1']))
-f = h5py.File(dirbase+'ddi_sl'+str(sli)+'.h5', 'r')
-ddi = np.array((f['DS1']))
-
-dd= ddr+1j*ddi
-dd=np.transpose(dd)
-#          dd=np.transpose(dd,axes=[1,0,2])
-dd=np.rot90(dd,3)
-
-dd = np.fft.ifftn(np.fft.fftshift(np.fft.fftn(dd,axes=[0,1]),axes=[0,1]),axes=[0,1])
-
-
-
-f = h5py.File(dirbase+'espsi_sl'+str(sli)+'.h5', 'r')
-espsi = np.array((f['DS1']))
-f = h5py.File(dirbase+'espsr_sl'+str(sli)+'.h5', 'r')
-espsr = np.array((f['DS1']))
-
-esps= espsr+1j*espsi
-esps = np.transpose(esps)
-#               esps=np.transpose(esps,axes=[1,0,2])
-esps=np.rot90(esps,3)
-esps=np.fft.fftshift(esps,axes=[0,1])
-sensmaps = esps.copy()
-sensmaps = np.fft.fftshift(sensmaps,axes=[0,1])
-
-sensmaps=np.rot90(np.rot90(sensmaps))
-dd=np.rot90(np.rot90(dd))
-#          sensmaps=np.swapaxes(sensmaps,0,1)
-#          dd=np.swapaxes(dd,0,1)
-
-
-
-#dd = dd[:,:,6:12]
-#sensmaps=sensmaps[:,:,6:12]
-
-ddim=np.fft.ifft2(dd,axes=[0,1])
-
-
+#normalize the coils and the k-space
 sensmaps=sensmaps/np.tile(np.sqrt(np.sum(sensmaps*np.conjugate(sensmaps),axis=2))[:,:,np.newaxis],[1, 1, sensmaps.shape[2]])
 
 ddimc = tFT(dd)
 dd=dd/np.percentile(  np.abs(ddimc).flatten()   ,99)
+
+#ddimc containst the fully sampled coil combined inverse Fourier transform
 ddimc = tFT(dd)
 
-          
+uspat = np.load(os.getcwd() + '/../example_data/usz_image/sample_uspat_r'+str(usfact)+'.npy')
+print("KCT-info: Read from existing u.s. pattern file")
 
-
-###################################################
-
-recon_base = '/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/MAPestimation/usz_images/rolled/'+args.base
-
-
-if not os.path.exists(recon_base):
-    os.makedirs(recon_base)
-
-R=usfact
-
-try:
-     uspat = np.load(recon_base + 'uspat_us'+str(R)+'_sli'+str(sli)+'.npy')
-     print("Read from existing u.s. pattern file")
-except:
-     uspat = USp.generate_opt_US_pattern_1D(dd.shape[0:2], R=R, max_iter=100, no_of_training_profs=15)
-     np.save(recon_base + 'uspat_us'+str(R)+'_sli'+str(sli), uspat)
-     print("Generated a new u.s. pattern file")
-     
-     
+#get the undersampled k-space     
 usksp = dd*np.tile(uspat[:,:,np.newaxis], [1, 1, dd.shape[2]])
 
 
-if args.prewhitening:
+###############################################################################
+### do the prewhitening of the data and the coils
+###############################################################################
+prewhitening = True
+if prewhitening:
+    
+     #calculate the coil covariance matrix from the outer parts of the k-space and take its Cholesky decomposition
      coil_cov = np.cov(usksp[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,:].reshape(-1,usksp.shape[2]).T)
-#     coil_cov = np.diag(np.diag(coil_cov))
      coil_cov_chol = np.linalg.cholesky(coil_cov)
-     
-     #np.isclose(coil_cov, np.dot(coil_cov_chol, coil_cov_chol.T.conj())).all()
-     
      coil_cov_chol_inv = np.linalg.inv(coil_cov_chol)
      
-#     coil_cov_chol_inv = np.eye(13)
-     
-     
-     
-     
+     #transform the undersampled k-space wit hthe inverse Cholsky decomposition
      usksp_tmp = usksp.reshape([-1, dd.shape[2]]).T
      mlt = np.tensordot(coil_cov_chol_inv, usksp_tmp, axes=[1,0])
      usksp_prew = mlt.T.reshape([dd.shape[0], dd.shape[1], dd.shape[2]])
      
-     
-
-
+     #check if the transformed k-space has a identity covariance, otherwise abort
      coil_cov_usksp_prew = np.cov(usksp_prew[0:20,int(np.floor(usksp_prew.shape[1]/2))-5:int(np.floor(usksp_prew.shape[1]/2))+5,:].reshape(-1,usksp_prew.shape[2]).T)
-     
-     #otherwise there is a problem
      assert(np.isclose(coil_cov_usksp_prew, np.eye(coil_cov_usksp_prew.shape[0])).all())
-#     
-#     usksp_prew_tmp = usksp_prew.reshape([-1, 13]).T
-#     mlt_prew = np.tensordot(coil_cov_chol_inv.T.conj(), usksp_prew_tmp, axes=[1,0])
-#     usksp_prew_prew = mlt_prew.T.reshape([237, 256, 13])
-#     
 
-     
+     # transform the coil maps as well
      sensmaps_tmp = sensmaps.reshape([-1,  dd.shape[2]]).T
      sensmaps_mlt = np.tensordot(coil_cov_chol_inv, sensmaps_tmp, axes=[1,0])
      sensmaps_prew = sensmaps_mlt.T.reshape([dd.shape[0], dd.shape[1], dd.shape[2]])  
      
+     # normalize again just in case
      sensmaps_prew=sensmaps_prew/np.tile(np.sqrt(np.sum(sensmaps_prew*np.conjugate(sensmaps_prew),axis=2))[:,:,np.newaxis],[1, 1, sensmaps_prew.shape[2]])
      sensmaps = sensmaps_prew.copy()
      
+     # normalize the full k-space as well for comparison purposes
      dd_tmp = dd.reshape([-1,  dd.shape[2]]).T
      dd_mlt = np.tensordot(coil_cov_chol_inv, dd_tmp, axes=[1,0])
      dd_prew = dd_mlt.T.reshape([dd.shape[0], dd.shape[1], dd.shape[2]])  
      ddimc_prew = tFT(dd_prew)
      dd_prew=dd_prew/np.percentile(  np.abs(ddimc_prew).flatten()   ,99)
      ddimc_prew = tFT(dd_prew)
-
+     
+     # make the image from the prewhitened undersampled k-space
      usksp_prew_img = tFT(usksp_prew)
      usksp_prew=usksp_prew/np.percentile(  np.abs(usksp_prew_img).flatten()   ,99)
      usksp_prew_img  = tFT(usksp_prew)
      
      coil_cov_chol_inv = []
 
-#     plt.figure();plt.imshow((np.abs(coil_cov_usksp_prew)))
-else:
-     coil_cov_chol_inv = []
-     usksp_prew = usksp.copy()
-     sensmaps_prew=sensmaps.copy()
 
-if R<=3:
-     num_iter = 602 # 302
-else:
-     num_iter = 602 # 602
-     
+
+###############################################################################
+### Set some reconstruction parameters and reconstruct if it does not exist
+###############################################################################
 num_iter = 202
      
 regtype='reg2'
 reg=0
-dcprojiter=args.dcprojiter
-onlydciter=args.onlydciter
+dcprojiter=1
+onlydciter=0
 chunks40=True
 mode = 'MRIunproc'
 
-     
-if not args.skiprecon:
-    
-     
-     #rec_vae = vaerecon5.vaerecon(usksp, sensmaps=sensmaps, dcprojiter=10, onlydciter=onlydciter, lat_dim=lat_dim, patchsize=ndims, parfact=20, num_iter=302, rescaled = rescaled, half=half,regiter=15, reglmb=reg, regtype=regtype)
-               
-     rec_vae = vaerecon5.vaerecon(         usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter,   onlydciter=onlydciter,                     lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter,                                  regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
-     pickle.dump(rec_vae[0], open(recon_base + 'rec_us'+str(R)+'_sli'+str(sli)+'_dcprojiter_'+str(dcprojiter)+'_onlydciter_'+str(onlydciter)+'_prew'+str(args.prewhitening) ,'wb')   )
-     rec_vae = rec_vae[0]
 
-else:
-     rec_vae = pickle.load( open(recon_base +  'rec_us'+str(R)+'_sli'+str(sli)+'_dcprojiter_'+str(dcprojiter)+'_onlydciter_'+str(onlydciter)+'_prew'+str(args.prewhitening) ,'rb'))
+# reconstruct the image if it does not exist     
+if os.path.exists(os.getcwd() + '/../../results/reconstruction/rec_usz_us'+str(usfact)):
+    print("KCT-info: reconstruction already exists, loading it...")
+    rec_vae = pickle.load(open('../../results/reconstruction/rec_usz_us'+str(usfact),'rb'))
+else:    
+    rec_vae = vaerecon5.vaerecon(usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter, onlydciter=onlydciter,lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
+    pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
+    rec_vae = rec_vae[0]
 
 
 
-######################
-###### SAMPLING ######
+###############################################################################
+### Now do the sampling from the decoder output
+###############################################################################
+#get the MAP reonstruction first
+recon_iter=101       
+maprecon = rec_vae[:,recon_iter].reshape([dd.shape[0], dd.shape[1]])
 
-if args.runsampling==1:
-     
-     import vaesampling
-     import os     
-     
-     # Now redefine the FFT functions to make the Ft unitary:
-#     del FT
-#     del tFT
-#     del UFT
-#     del tUFT
-          
-#     def FT (x):
-#          #inp: [nx, ny]
-#          #out: [nx, ny, ns]
-#          return np.fft.fftshift(    np.fft.fft2( sensmaps*np.tile(x[:,:,np.newaxis],[1,1,sensmaps.shape[2]]) , axes=(0,1)  ),   axes=(0,1)    )  / np.sqrt(x.shape[0]*x.shape[1])
-#     
-#     def tFT (x):
-#          #inp: [nx, ny, ns]
-#          #out: [nx, ny]
-#          
-#          temp = np.fft.ifft2(  np.fft.ifftshift( x , axes=(0,1) ),  axes=(0,1)  )
-#          return np.sum( temp*np.conjugate(sensmaps) , axis=2) /  np.sum(sensmaps*np.conjugate(sensmaps),axis=2)   * np.sqrt(x.shape[0]*x.shape[1])
-#     
-#     
-#     def UFT(x, uspat):
-#          #inp: [nx, ny], [nx, ny]
-#          #out: [nx, ny, ns]
-#          
-#          return np.tile(uspat[:,:,np.newaxis],[1,1,sensmaps.shape[2]])*FT(x)
-#     
-#     def tUFT(x, uspat):
-#          #inp: [nx, ny], [nx, ny]
-#          #out: [nx, ny]
-#          
-#          tmp1 = np.tile(uspat[:,:,np.newaxis],[1,1,sensmaps.shape[2]])
-#     #     print(x.shape)
-#     #     print(tmp1.shape)
-#          
-#          return  tFT( tmp1*x )
-     
+#set some of the parameters 
+imgsize=[182,210] # [252,308]#[182,210]
+kspsize=[dd.shape[0], dd.shape[1], dd.shape[2]] # [238,266]
+
+#calculate the padding values to use later
+pad2edges00=int(np.ceil((kspsize[0]-imgsize[0])/2 ))
+pad2edges01=int(np.floor((kspsize[0]-imgsize[0])/2 ))
+pad2edges10=int(np.ceil((kspsize[1]-imgsize[1])/2 ))
+pad2edges11=int(np.floor((kspsize[1]-imgsize[1])/2 ))
+pads = -np.array( [ [pad2edges00,pad2edges01] , [pad2edges10,pad2edges11] ] )
 
 
-     sampling_base = '/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/samples/usz_images/bfc/'+args.base+'R'+str(R)+'_sli'+str(args.sli)+'_prew'+str(args.prewhitening)+'_masking'+str(args.mask4sampling)
-     if not os.path.exists(sampling_base):
-         os.makedirs(sampling_base)
-          
-          
-          
-     
-     
-     
-     
-     recon_iter=101       
-     
-#     print("FOR DEBUG")
-#     print(dd.shape)
-#     print(dd.shape[0])
-#     print(dd.shape[1])
-#     print([dd.shape[0], dd.shape[1]])
-#     print("----------------")
-#     
-#     print(rec_vae.shape)
-#     print(dd.shape[0] * dd.shape[0])
-     
-     
-#     try:
-     maprecon = rec_vae[:,recon_iter].reshape([dd.shape[0], dd.shape[1]])
-#     except:
-#          ddsz1= dd.shape[0]
-#          ddsz2= dd.shape[1]
-#          tmp=rec_vae[:,recon_iter]
-#          maprecon = np.reshape(tmp, (ddsz1, ddsz2))
-     
-          
-          
-     
-     imgsize=[182,210] # [252,308]#[182,210]
-     kspsize=[dd.shape[0], dd.shape[1], dd.shape[2]] # [238,266]
-     
-     
-     kshval1 =  int(np.floor(kspsize[0]/2))
-     kshval2 =  int(np.floor(kspsize[1]/2))
-     
-     pad2edges00=int(np.ceil((kspsize[0]-imgsize[0])/2 ))
-     pad2edges01=int(np.floor((kspsize[0]-imgsize[0])/2 ))
-     pad2edges10=int(np.ceil((kspsize[1]-imgsize[1])/2 ))
-     pad2edges11=int(np.floor((kspsize[1]-imgsize[1])/2 ))
-     
-     pads = -np.array( [ [pad2edges00,pad2edges01] , [pad2edges10,pad2edges11] ] )
-     
-     
-     #make a mask and find the roll value to center the brain in the FOV:
-     import skimage.morphology
-     eroded_mask  = skimage.morphology.binary_erosion((np.abs(maprecon)>0.3), selem=np.ones([3,3]))
-     rollval = int((eroded_mask.shape[1] - np.where(eroded_mask==1)[1].max() - np.where(eroded_mask==1)[1].min())/2)
-     
-     mapreconpad = padslice_2d( maprecon, pads, rollval ) # a4
-     
-     # bias field stuff:
-     import SimpleITK as sitk
-     
-     ddimcabs = np.abs(maprecon)
-     
-     inputImage = sitk.GetImageFromArray(ddimcabs, isVector=False)
-     corrector = sitk.N4BiasFieldCorrectionImageFilter();
-     inputImage = sitk.Cast(inputImage, sitk.sitkFloat32)
-     output = corrector.Execute(inputImage)
-     N4biasfree_output = sitk.GetArrayFromImage(output)
-     
-     n4biasfield = np.abs(maprecon)/(N4biasfree_output+1e-9)
-     
-     mapreconpad = padslice_2d( N4biasfree_output, pads, rollval ) # a4
-     
-     empiricalPrior=True
-     lowres = True
-     BFcorr = True
-     
-     numinversioniters = args.numinversioniters
-     model_prec_val = args.modelprecval
-     noisemodifier = args.noisemodifier
-     
-     #n4biasfield = np.ones(kspsize[0:2])
-     
-     if args.mask4sampling==1:
-          mapreconpad = mapreconpad*(np.abs(mapreconpad)>0.1)
-     
-     
-     #sampling  = vaesampling.vaesampling( usksp=usksp, sensmaps=sensmaps, maprecon=mapreconpadbfc, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=dirname, model_prec_val=50, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=True, biasfield = n4biasfield, numsamp = 10000, saveevery = 100)
-     sampling  = vaesampling.vaesampling( usksp=usksp_prew, sensmaps=sensmaps_prew, maprecon=mapreconpad, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=sampling_base, im_kspsize=[imgsize, kspsize], model_prec_val=model_prec_val, numinversioniters=numinversioniters, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=BFcorr, biasfield=n4biasfield, numsamp = 10000, saveevery = 100,noisemodifier=noisemodifier, rollval = rollval)
-     
+#now we do a very coarse "registration" by simply making sure the center of tha brain is in the center of the FOV
+#make a mask and find the roll value to center the brain in the FOV:
+#the rollvalue is the difference of the center of the FOV to the center of the brain, found as the leftmost and rightmost
+#points of the brain mask
+import skimage.morphology
+eroded_mask  = skimage.morphology.binary_erosion((np.abs(maprecon)>0.3), selem=np.ones([3,3]))
+rollval = int((eroded_mask.shape[1] - np.where(eroded_mask==1)[1].max() - np.where(eroded_mask==1)[1].min())/2)
 
+#obtain the padded and centered brain
+mapreconpad = padslice_2d( maprecon, pads, rollval ) # a4
+
+# estimate the biasfield from the MAP estimate
+inputImage = sitk.GetImageFromArray(np.abs(maprecon), isVector=False)
+corrector = sitk.N4BiasFieldCorrectionImageFilter();
+inputImage = sitk.Cast(inputImage, sitk.sitkFloat32)
+output = corrector.Execute(inputImage)
+N4biasfree_output = sitk.GetArrayFromImage(output)
+n4biasfield = np.abs(maprecon)/(N4biasfree_output+1e-9)
+
+#obtain the padded and centered and biasfield corrected brain
+mapreconpad = padslice_2d( N4biasfree_output, pads, rollval ) # a4
+
+#set some parameters for the sampling
+empiricalPrior=True
+lowres = True
+BFcorr = True
+
+numinversioniters = 30
+model_prec_val = 50
+noisemodifier = 1
+mask4sampling = True
+numsamp = 10000
+saveevery = 100
+
+if args.mask4sampling:
+    mapreconpad = mapreconpad*(np.abs(mapreconpad)>0.1)
+   
+#where to save the samples    
+dir4samples = os.getcwd() + '/../../results/sampling/decoder_samples/'
+
+#run the sampling
+sampling  = vaesampling.vaesampling( usksp=usksp_prew, sensmaps=sensmaps_prew, maprecon=mapreconpad, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=dir4samples, im_kspsize=[imgsize, kspsize], model_prec_val=model_prec_val, numinversioniters=numinversioniters, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=BFcorr, biasfield=n4biasfield, numsamp = numsamp, saveevery = saveevery, noisemodifier=noisemodifier, rollval = rollval)
+
+
+
+
+
+###############################################################################
+### Now do the proper sampling from p(x\y,z)
+###############################################################################
 
 if args.runsampling_step2:
     
