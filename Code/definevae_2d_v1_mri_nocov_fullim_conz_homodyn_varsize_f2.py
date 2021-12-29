@@ -583,12 +583,12 @@ def definevae_2d_v1_mri_nocov_fullim_conz_homodyn_varsize_f2(batch_size=5, im_ks
      if BFcorr == True and lowres == False:
           step=1900000
           modelname = 'cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_new_bfc_noiseprec50_l2prec50_denFalse_step'+str(step)
-          saver.restore(sess, '../trained_models/'+modelname)# 
+          saver.restore(sess, os.getcwd() + '/../../trained_models/'+modelname)# 
           print("KCT-info:  Loading legecy model, with Bf corr, high res: " + modelname)
      elif BFcorr == True and lowres == True:
           step=1750000
           modelname = 'cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_new_lowres_bfc_noiseprec50_l2prec50_denFalse_step'+str(step)
-          saver.restore(sess, '../trained_models/'+modelname)# 
+          saver.restore(sess, os.getcwd() + '/../../trained_models/'+modelname)# 
           print("KCT-info:  Loading legecy model, with Bf corr, low res: " + modelname)
      else:
           print("I don't have a trined model for settings, except BFCorr=True and lowres=True/False")  

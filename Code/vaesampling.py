@@ -414,14 +414,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      mupost_tmp2s = []
      
      acceptctr = 0
-     
-     print(">>>>>>>>>>>>>>>>>> >>>>>>>>>>>>>>>>>> >>>>>>>>>>>>>>>>>> >>>>>>>>>>>>>>>>>> YY: USKSP ")
-     print(usksp.shape)
-     
-     np.save('/home/ktezcan/unnecessary_stuff/mapim0', np.tile(mapim[np.newaxis,:,:],[5,1,1]))
-     
-     print("saved mapim!!!!")
-     
+          
      
      np.savez(directoryname+'/arrays_model_precision_value'+str(model_precision_value)+'_withscl_r35_scl'+str(scl)+'_sx'+str(sx)+'_empPrior'+str(empiricalPrior)+'_step'+str(step)+'_samp_init', \
              zsc=zsc) # , gammavs=gammavs
@@ -434,12 +427,10 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
          optimalscalev, optimalscale_tmp1v, optimalscale_tmp2v, ttt11v, ttt12v = sess.run([ optimalscalef, optimalscale_tmp1f, optimalscale_tmp2f, ttt11f, ttt12f], feed_dict={x_inp: np.zeros([5,mapim.shape[0],mapim.shape[1]]), z_samples: np.tile((zsc)[np.newaxis,:,:],[5,1,1,1]), uspattff: uspat[:,:,0], sensmapsplf:sensmaps, yy:usksp, phaseimf:mapphase, sclfactorf:[1+0*1j], biasfieldtf: biasfield})
          print("optimal scale value is: :")   
          print(optimalscalev)
-         print("tmp scale value 1 is: :")   
-         print(optimalscale_tmp1v)
-         print("tmp scale value 2 is: :")   
-         print(optimalscale_tmp2v)
-         
-         np.savez('/home/ktezcan/unnecessary_stuff/debugstuff', ttt11v=ttt11v, ttt12v=ttt12v )
+#         print("tmp scale value 1 is: :")   
+#         print(optimalscale_tmp1v)
+#         print("tmp scale value 2 is: :")   
+#         print(optimalscale_tmp2v)
          
          print("KCT-WARN: switched ON scale factor correction")    
          sclfct_cur = [np.real(optimalscalev)] # np.array( [1+0*1j]) #  

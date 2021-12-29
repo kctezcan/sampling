@@ -207,7 +207,8 @@ mode = 'MRIunproc'
 numiter = 102
 
 # reconstruct the image if it does not exist
-if os.path.exists('../results/reconstruction/rec_us'+str(usfact)):
+if os.path.exists(os.getcwd() + '/../../results/reconstruction/rec_us'+str(usfact)):
+    print("KCT-info: reconstruction already exists, loading it...")
     rec_vae = pickle.load(open('../../results/reconstruction/rec_us'+str(usfact),'rb'))
 else:
     rec_vae = vaerecon6.vaerecon(usksp, sensmaps=np.ones_like(usksp), dcprojiter=dcprojiter, lat_dim=60, patchsize=28, contRec='' ,parfact=25, num_iter=numiter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
@@ -329,7 +330,7 @@ nssx=1
 num_of_files = int(numsamp/saveevery)
 
 for ix in range(num_of_files):
-    print('reading and processing file '+str(ix+1)+'/20')
+    print('reading and processing file '+str(ix+1)+'/'+str(num_of_files))
     aa = np.load(  '../../results/samples/decoder_samples/samples_'+str(ix+1)+'.npz'   )
    
     ims = aa['ims'] # the decoder output sample
