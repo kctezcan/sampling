@@ -39,14 +39,14 @@ print("KCT-info: running script from directory: " + scriptdir)
 os.chdir(scriptdir)
 
 #make the necessary folders if not existing
-if not os.path.exists(os.getcwd() + '/../../results/reconstruction/'):
-    os.mkdir(os.getcwd() + '/../../results/reconstruction/')
+if not os.path.exists(os.getcwd() + '/../../results/hcp/reconstruction/'):
+    os.mkdir(os.getcwd() + '/../../results/hcp/reconstruction/')
     
-if not os.path.exists(os.getcwd() + '/../../results/sampling/'):
-    os.mkdir(os.getcwd() + '/../../results/sampling/')
+if not os.path.exists(os.getcwd() + '/../../results/hcp/samples/'):
+    os.mkdir(os.getcwd() + '/../../results/hcp/samples/')
     
-if not os.path.exists(os.getcwd() + '/../../results/sampling/decoder_samples/'):
-    os.mkdir(os.getcwd() + '/../../results/sampling/decoder_samples/')
+if not os.path.exists(os.getcwd() + '/../../results/hcp/samples/decoder_samples/'):
+    os.mkdir(os.getcwd() + '/../../results/hcp/samples/decoder_samples/')
 
 
 
@@ -217,14 +217,14 @@ mode = 'MRIunproc'
 numiter = 102
 
 # reconstruct the image if it does not exist
-if os.path.exists(os.getcwd() + '/../../results/reconstruction/rec_hcp_us'+str(usfact)):
+if os.path.exists(os.getcwd() + '/../../results/hcp/reconstruction/rec_hcp_us'+str(usfact)):
     print("KCT-info: reconstruction already exists, loading it...")
-    rec_vae = pickle.load(open('../../results/reconstruction/rec_hcp_us'+str(usfact),'rb'))
+    rec_vae = pickle.load(open('../../results/hcp/reconstruction/rec_hcp_us'+str(usfact),'rb'))
 else:
     rec_vae = vaerecon6.vaerecon(usksp, sensmaps=np.ones_like(usksp), dcprojiter=dcprojiter, lat_dim=60, patchsize=28, contRec='' ,parfact=25, num_iter=numiter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
     rec_vae = rec_vae[0]
     #save the reconstruction
-    pickle.dump(rec_vae, open('../../results/reconstruction/rec_hcp_us'+str(usfact),'wb')   )
+    pickle.dump(rec_vae, open('../../results/hcp/reconstruction/rec_hcp_us'+str(usfact),'wb')   )
 
 lastiter = int((np.floor(rec_vae.shape[1]/13)-2)*13)
 rec = rec_vae[:,lastiter].reshape([252,308])
@@ -276,7 +276,7 @@ mapreconpad = padslice_2d( N4biasfree_output, pads ) # a4
 mapphase = np.exp(1j*np.angle(maprecon))   
 
 # specify where to save the samples, samples will appear in this folder
-dirname = '../../results/samples/decoder_samples'
+dirname = '../../results/hcp/samples/decoder_samples'
 
 numsamp = 10000
 saveevery = 100
@@ -341,7 +341,7 @@ num_of_files = int(numsamp/saveevery)
 
 for ix in range(num_of_files):
     print('reading and processing file '+str(ix+1)+'/'+str(num_of_files))
-    aa = np.load(  '../../results/samples/decoder_samples/samples_'+str(ix+1)+'.npz'   )
+    aa = np.load(  '../../results/hcp/samples/decoder_samples/samples_'+str(ix+1)+'.npz'   )
    
     ims = aa['ims'] # the decoder output sample
     
@@ -352,7 +352,7 @@ for ix in range(num_of_files):
         res = np.abs(tFT(res, normalize=True))
         ress[ixim] = res
     
-    np.save('../../results/samples/samples_'+str(ix+1), ress)
+    np.save('../../results/hcp/samples/samples_'+str(ix+1), ress)
     
     
 
@@ -362,7 +362,7 @@ for ix in range(num_of_files):
 
 samps = []
 for ix in range(num_of_files):
-    samps.append(np.load('../../results/samples/samples_'+str(ix+1)+'.npy'))
+    samps.append(np.load('../../results/hcp/samples/samples_'+str(ix+1)+'.npy'))
 
 samps = np.array(samps)
 samps = np.reshape(samps, [-1, 252, 308])

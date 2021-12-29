@@ -20,22 +20,15 @@ import scipy.optimize as sop
 import SimpleITK as sitk
 
 
-import time
-
 import os
 import subprocess
 import sys
 
-scriptdir = os.path.dirname(sys.argv[0])+'/'
-#print("KCT-info: running script from directory: " + scriptdir)
-os.chdir(scriptdir)
-
-
-
-## direk precision optimize etmek daha da iyi olabilir. 
-
-def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsize=28, contRec='', parfact=10, num_iter=302, rescaled=False, half=False, regiter=15, reglmb=0.05, regtype='TV', usemeth=1, stepsize=1e-4, optScale=False, mode=[], chunks40=False, Melmodels='', N4BFcorr=False, z_multip=1.0):
+def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsize=28, contRec='', parfact=10, num_iter=302, rescaled=False, half=False, regiter=15, reglmb=0.05, regtype='TV', usemeth=1, stepsize=1e-4, optScale=False, mode=[], chunks40=False, Melmodels='', N4BFcorr=False, z_multip=1.0, coil_cov_chol_inv=[]):
      
+     
+     print("Reg value is: " + str(reglmb))
+
      
      # set parameters
      #==============================================================================
@@ -64,18 +57,65 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
      
      #define the necessary functions
      #==============================================================================
-
+     
      def FT (x):
           #inp: [nx, ny]
           #out: [nx, ny, ns]
+          
           return np.fft.fftshift(    np.fft.fft2( sensmaps*np.tile(x[:,:,np.newaxis],[1,1,sensmaps.shape[2]]) , axes=(0,1)  ),   axes=(0,1)    )
+
+
+#          
+#          if coil_cov_chol_inv == []:
+#               return tmp
+#          else:
+#               #do the pre-whitening
+#               tmp_orig_shape = tmp.shape
+#               tmp = tmp.reshape([-1, sensmaps.shape[2]]).T
+#               mlt_prew = np.tensordot(coil_cov_chol_inv, tmp, axes=[1,0])
+#               mlt_prew = mlt_prew.T.reshape(tmp_orig_shape)
+#               return mlt_prew
+
+          
      
      def tFT (x):
           #inp: [nx, ny, ns]
           #out: [nx, ny]
           
-          temp = np.fft.ifft2(  np.fft.ifftshift( x , axes=(0,1) ),  axes=(0,1)  )
-          return np.sum( temp*np.conjugate(sensmaps) , axis=2)  / np.sum(sensmaps*np.conjugate(sensmaps),axis=2)
+         
+            temp = np.fft.ifft2(  np.fft.ifftshift( x , axes=(0,1) ),  axes=(0,1)  )
+            return np.sum( temp*np.conjugate(sensmaps) , axis=2)  / np.sum(sensmaps*np.conjugate(sensmaps),axis=2)
+
+
+#           if coil_cov_chol_inv == []:
+#          else:
+#               #do the pre-whitening
+#               tmp_orig_shape = x.shape
+#               tmp = x.reshape([-1, sensmaps.shape[2]]).T
+#               mlt_prew = np.tensordot(coil_cov_chol_inv.T.conj(), tmp, axes=[1,0])
+#               x = mlt_prew.T.reshape(tmp_orig_shape)
+#               
+#               temp = np.fft.ifft2(  np.fft.ifftshift( x , axes=(0,1) ),  axes=(0,1)  )
+#               return np.sum( temp*np.conjugate(sensmaps) , axis=2)  / np.sum(sensmaps*np.conjugate(sensmaps),axis=2)
+               
+               
+          
+          
+     
+     
+
+#     def FT (x):
+#          #inp: [nx, ny]
+#          #out: [nx, ny, ns]
+#          
+#          return np.fft.fftshift(    np.fft.fft2( sensmaps*np.tile(x[:,:,np.newaxis],[1,1,sensmaps.shape[2]]) , axes=(0,1)  ),   axes=(0,1)    )
+#     
+#     def tFT (x):
+#          #inp: [nx, ny, ns]
+#          #out: [nx, ny]
+#          
+#          temp = np.fft.ifft2(  np.fft.ifftshift( x , axes=(0,1) ),  axes=(0,1)  )
+#          return np.sum( temp*np.conjugate(sensmaps) , axis=2)  / np.sum(sensmaps*np.conjugate(sensmaps),axis=2)
      
      
      def UFT(x, uspat):
@@ -346,47 +386,13 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           ims = np.zeros((imsizer,imrizec,niter))
           ims[:,:,0]=usph.copy()
           regval = reg2eval(ims[:,:,0].flatten())
-#          print(regval)
+          print(regval)
           for ix in range(niter-1):
               ims[:,:,ix+1] = ims[:,:,ix] +alpha*reg2grd(ims[:,:,ix].flatten()).reshape([252,308]) # *alpha*np.real(1j*np.exp(-1j*ims[:,:,ix])*    fdivg(fgrad(np.exp(  1j* ims[:,:,ix]    )))     )
               regval = reg2eval(ims[:,:,ix+1].flatten())
 #              print(regval)
           
-          return ims[:,:,-1]-np.pi    
-     
-     def reg2_dcproj(usph, magim, bfestim, niter=100, alpha_reg=0.05, alpha_dc=0.05):
-          #from  Separate Magnitude and Phase Regularization via Compressed Sensing,  Feng Zhao
-          
-          #usph=usph+np.pi
-          
-          ims = np.zeros((imsizer,imrizec,niter))
-          grds_reg = np.zeros((imsizer,imrizec,niter))
-          grds_dc = np.zeros((imsizer,imrizec,niter))
-          ims[:,:,0]=usph.copy()
-          regval = reg2eval(ims[:,:,0].flatten())
-#          print(regval)
-          for ix in range(niter-1):
-               
-              grd_reg = reg2grd(ims[:,:,ix].flatten()).reshape([252,308])  # *alpha*np.real(1j*np.exp(-1j*ims[:,:,ix])*    fdivg(fgrad(np.exp(  1j* ims[:,:,ix]    )))     )
-              grds_reg[:,:,ix]  = grd_reg
-              grd_dc = reg2_dcgrd(ims[:,:,ix].flatten() , magim, bfestim).reshape([252,308])
-              grds_dc[:,:,ix]  = grd_dc
-              
-              ims[:,:,ix+1] = ims[:,:,ix] + alpha_reg*grd_reg  - alpha_dc*grd_dc
-              regval = reg2eval(ims[:,:,ix+1].flatten())
-              f_dc = dconst(magim*np.exp(1j*ims[:,:,ix+1])*bfestim)
-              
-#              print("norm grad reg: " + str(np.linalg.norm(grd_reg)))
-#              print("norm grad dc: " + str(np.linalg.norm(grd_dc)) )
-#              
-#              print("regval: " + str(regval))
-#              print("fdc: (*1e9) {0:.6f}".format(f_dc/1e9))
-          
-#          np.save('/home/ktezcan/unnecessary_stuff/phase', ims)
-#          np.save('/home/ktezcan/unnecessary_stuff/grds_reg', grds_reg)
-#          np.save('/home/ktezcan/unnecessary_stuff/grds_dc', grds_dc)
-#          print("SAVED!!!!!!")
-          return ims[:,:,-1]#-np.pi    
+          return ims[:,:,-1]-np.pi     
      
      def reg2eval(im):
           #takes in 1d, returns scalar
@@ -399,7 +405,6 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           im=im.reshape([252,308])
           return -2*np.real(1j*np.exp(-1j*im) *  fdivg(fgrad(np.exp(  1j* im    )))     ).flatten()
      
-     
      def reg2_dcgrd(phim, magim, bfestim):
           #takes in 1d, returns 1d
           phim=phim.reshape([252,308])
@@ -407,6 +412,39 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           
           return -2*np.real(1j*np.exp(-1j*phim)*magim *  bfestim*tUFT(  (UFT(bfestim*np.exp(1j*phim)*magim, uspat)-data ), uspat)     ).flatten()
      
+     def reg2_dcproj(usph, magim, bfestim, niter=100, alpha_reg=0.05, alpha_dc=0.05):
+          #from  Separate Magnitude and Phase Regularization via Compressed Sensing,  Feng Zhao
+          
+          #usph=usph+np.pi
+          
+          ims = np.zeros((imsizer,imrizec,niter))
+          grds_reg = np.zeros((imsizer,imrizec,niter))
+          grds_dc = np.zeros((imsizer,imrizec,niter))
+          ims[:,:,0]=usph.copy()
+          regval = reg2eval(ims[:,:,0].flatten())
+          print(regval)
+          for ix in range(niter-1):
+               
+              grd_reg = reg2grd(ims[:,:,ix].flatten()).reshape([252,308])  # *alpha*np.real(1j*np.exp(-1j*ims[:,:,ix])*    fdivg(fgrad(np.exp(  1j* ims[:,:,ix]    )))     )
+              grds_reg[:,:,ix]  = grd_reg
+              grd_dc = reg2_dcgrd(ims[:,:,ix].flatten() , magim, bfestim).reshape([252,308])
+              grds_dc[:,:,ix]  = grd_dc
+              
+              ims[:,:,ix+1] = ims[:,:,ix] + alpha_reg*grd_reg  - alpha_dc*grd_dc
+              regval = reg2eval(ims[:,:,ix+1].flatten())
+              f_dc = dconst(magim*np.exp(1j*ims[:,:,ix+1])*bfestim)
+              
+              print("norm grad reg: " + str(np.linalg.norm(grd_reg)))
+              print("norm grad dc: " + str(np.linalg.norm(grd_dc)) )
+              
+              print("regval: " + str(regval))
+              print("fdc: (*1e9) {0:.6f}".format(f_dc/1e9))
+          
+#          np.save('/home/ktezcan/unnecessary_stuff/phase', ims)
+#          np.save('/home/ktezcan/unnecessary_stuff/grds_reg', grds_reg)
+#          np.save('/home/ktezcan/unnecessary_stuff/grds_dc', grds_dc)
+#          print("SAVED!!!!!!")
+          return ims[:,:,-1]#-np.pi    
      
      def reg2_proj_ls(usph, niter=100):
           
@@ -460,10 +498,11 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
      
      uspat=np.abs(us_ksp_r2)>0
      uspat=uspat[:,:,0]
+     
+     
      data=us_ksp_r2
      
-     trpat = np.zeros_like(uspat)
-     trpat[:,120:136] = 1
+     
           
      print(uspat)
      
@@ -496,17 +535,15 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           return np.reshape(t1,[-1]), np.reshape(t2,[-1]), np.reshape(t3,[-1])
      
      # initialize data
-     recs=np.zeros((imsizer*imrizec,numiter+30), dtype=complex) 
+     recs=np.zeros((imsizer*imrizec,numiter), dtype=complex) 
      
 #     recs[:,0] = np.abs(tUFT(data, uspat).flatten().copy()) #kct
      recs[:,0] = tUFT(data, uspat).flatten().copy() 
      
      if N4BFcorr:
-#          phasetmp = np.reshape(np.angle(recs[:,0]),[imsizer,imrizec])
+          phasetmp = np.reshape(np.angle(recs[:,0]),[imsizer,imrizec])
           n4bf, N4bf_image = N4corrf( np.reshape(recs[:,0],[imsizer,imrizec]) )
           recs[:,0] = N4bf_image.flatten()
-     else:
-          n4bf=1
           
           
 #     recs[:,0] = np.abs(tUFT(data, uspat).flatten().copy() )*np.exp(1j*lrphase).flatten()
@@ -531,419 +568,230 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
                recs[:,0]=rr[:,-1]
                print('KCT-INFO: initialized to the previous recon from numpy: ' + contRec)
 
+     printed=False
+     
+     sclval=1
+     
+     vs=[]
+     
      n4biasfields=[]
      
-     recsarr = []
+     for it in range(numiter-1):
+          
+          
+          alpha=alphas[it]
      
-     for it in range(0, numiter-1, 13):
-          
-          
-          
-           alpha=alphas[it]
-     
-          # first do N times magnitude prior iterations
-          #===============================================
-          #===============================================
-      
-           recstmp = recs[:,it].copy()
-           for ix in range(10):
-                ftot, f_lik, f_dc = feval(recstmp)
-                if N4BFcorr:
-                     f_dc = dconst(recstmp.reshape([imsizer,imrizec])*n4bf)
-                gtot, g_lik, g_dc = geval(recstmp)
+          if it >onlydciter:
+                ftot, f_lik, f_dc = feval(recs[:,it])
+                gtot, g_lik, g_dc = geval(recs[:,it])
                
-                print("it no: " + str(it+ix) + " f_tot= " + str(ftot) + " f_lik= " + str(f_lik) + " f_dc (1e6)= " + str(f_dc/1e6) + " |g_lik|= " + str(np.linalg.norm(g_lik)) + " |g_dc|= " + str(np.linalg.norm(g_dc)) )
+                print("it no: " + str(it) + " f_tot= " + str(ftot) + " f_lik= " + str(f_lik) + " f_dc (1e6)= " + str(f_dc/1e6) + " |g_lik|= " + str(np.linalg.norm(g_lik)) + " |g_dc|= " + str(np.linalg.norm(g_dc)) )
                
-                recstmp=recstmp - alpha * g_lik
-                recs[:,it+ix+1] = recstmp.copy()
-           
-#          #Now do a  DC projection
-           recs[:,it+11] = recs[:,it+10]    # skip the DC projection  
-#          #===============================================
-#          #===============================================
-#           if not N4BFcorr:  
-#               pass
-#               
-#           elif N4BFcorr:
-#               
-#               n4bf_prev = n4bf.copy()
-#               imgtmp = np.reshape(recs[:,it+10],[imsizer,imrizec]) # biasfree
-#               imgtmp_bf = imgtmp*n4bf_prev # img with bf
-#               
-#               n4bf, N4bf_image = N4corrf( imgtmp_bf ) # correct the bf, this correction is supposed to be better now.
-#               
-#               imgtmp_new = imgtmp*n4bf
-#               
-#               
-#               n4biasfields.append(n4bf)
-#               
-#               
-#               
-#               tmp1 = UFT(imgtmp_new, (1-uspat)  )
-#               
-#               tmp3= data*uspat[:,:,np.newaxis]
-#               
-#               tmp=tmp1 +  (1-multip)*tmp3 # multip=0 by default
-#               recs[:,it+11] = (tFT(tmp)/n4bf).flatten()
-#               
-#               ftot, f_lik, f_dc = feval(recs[:,it+11])
-#               if N4BFcorr:
-#                     f_dc = dconst(recs[:,it+11].reshape([imsizer,imrizec])*n4bf)
-#               print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
-           
-          # now do a phase projection
-          #===============================================
-          #===============================================
-           tmpa=np.abs(np.reshape(recs[:,it+11],[imsizer,imrizec]))
-           tmpp=np.angle(np.reshape(recs[:,it+11],[imsizer,imrizec]))
-           
-           tmpatv = tmpa.copy().flatten()
-           
-           if reglmb == 0:
-                print("skipping phase proj")
-                tmpptv=tmpp.copy().flatten()
-           else:
-                if regtype=='TV':
-                     tmpptv=tv_proj(tmpp, mu=0.125,lmb=reglmb,IT=regiter).flatten() #0.1, 15
-                elif regtype=='reg2':
-                     tmpptv=reg2_proj(tmpp, alpha=reglmb,niter=100).flatten() #0.1, 15
-                     regval=reg2eval(tmpp)
-                     phaseregvals.append(regval)
-                     print("KCT-dbg: pahse reg value is " + str(regval))
-                elif regtype=='reg2_dc':
-                     tmpptv=reg2_dcproj(tmpp, tmpa, n4bf, alpha_reg=reglmb, alpha_dc=reglmb, niter=100).flatten()
-                     #regval=reg2_dceval(tmpp, tmpa)
-                     #phaseregvals.append(regval)
-                     #print("KCT-dbg: reg2+DC pahse reg value is " + str(regval))
-                elif regtype=='abs':
-                     tmpptv=np.zeros_like(tmpp).flatten()
-                elif regtype=='reg2_ls':
-                     tmpptv=reg2_proj_ls(tmpp, niter=regiter).flatten() #0.1, 15
-                     regval=reg2eval(tmpp)
-                     phaseregvals.append(regval)
-                     print("KCT-dbg: pahse reg value is " + str(regval))
-                else:
-                     print("hey mistake!!!!!!!!!!")
-           
-           
-           recs[:,it+12] = tmpatv*np.exp(1j*tmpptv)
+                recs[:,it+1]=recs[:,it] - alpha * g_lik
                 
-          #now do again a data consistency projection
-          #===============================================
-          #===============================================
-           if not N4BFcorr:  
-               tmp1 = UFT(np.reshape(recs[:,it+12],[imsizer,imrizec]), (1-uspat)  )
-               tmp2 = UFT(np.reshape(recs[:,it+12],[imsizer,imrizec]), (uspat)  )
-               tmp3= data*uspat[:,:,np.newaxis]
+                if printed==False:
+                     pickle.dump(g_lik,open('/home/ktezcan/unnecessary_stuff/grad_meth3','wb'))
+                     printed=True
+                     
+                tmpa=np.abs(np.reshape(recs[:,it+1],[imsizer,imrizec]))
+                tmpp=np.angle(np.reshape(recs[:,it+1],[imsizer,imrizec]))
+                
+#                tmpatv=tv_proj(tmpa, mu=0.125,lmb=0.1,IT=15).flatten()
+                tmpatv = tmpa.copy().flatten()
+                
+                if reglmb == 0:
+                     print("skipping phase proj")
+                     tmpptv=tmpp.copy().flatten()
+                else:
+                     if regtype=='TV':
+                          tmpptv=tv_proj(tmpp, mu=0.125,lmb=reglmb,IT=regiter).flatten() #0.1, 15
+                     elif regtype=='reg2':
+                          tmpptv=reg2_proj(tmpp, alpha=reglmb,niter=regiter).flatten() #0.1, 15
+                          regval=reg2eval(tmpp)
+                          phaseregvals.append(regval)
+                          print("KCT-dbg: pahse reg value is " + str(regval))
+                     elif regtype=='reg2_dc':
+                          tmpptv=reg2_dcproj(tmpp, tmpa, n4bf, alpha_reg=reglmb, alpha_dc=reglmb, niter=100).flatten()
+                          #regval=reg2_dceval(tmpp, tmpa)
+                          #phaseregvals.append(regval)
+                          #print("KCT-dbg: reg2+DC pahse reg value is " + str(regval))
+                     elif regtype=='abs':
+                          tmpptv=np.zeros_like(tmpp).flatten()
+                     elif regtype=='reg2_ls':
+                          tmpptv=reg2_proj_ls(tmpp, niter=regiter).flatten() #0.1, 15
+                          regval=reg2eval(tmpp)
+                          phaseregvals.append(regval)
+                          print("KCT-dbg: pahse reg value is " + str(regval))
+                     else:
+                          print("hey mistake!!!!!!!!!!")
+                
+#                tmpatv=tikh_proj(tmpa, niter=100, alpha=0.05).flatten()
+#                tmpptv=tikh_proj(tmpp, niter=100, alpha=0.05).flatten()
+                
+                recs[:,it+1] = tmpatv*np.exp(1j*tmpptv)
+                
+                if optScale:
+                   #try different scale values:
+                    v1 = np.linalg.norm(data - UFT(np.reshape(0.99*sclval*recs[:,it+1],[imsizer,imrizec]), uspat  )   )
+                    v2 = np.linalg.norm(data - UFT(np.reshape(1*sclval*recs[:,it+1],[imsizer,imrizec]), uspat  )   )
+                    v3 = np.linalg.norm(data - UFT(np.reshape(1.01*sclval*recs[:,it+1],[imsizer,imrizec]), uspat  )   )
+                   
+                    print(v1, v2, v3)
+                    if v1<v2 and v1<v3:
+                         sclval = sclval*0.99
+                         recs[:,it+1] = 0.99*sclval*recs[:,it+1]
+                         print("chose 1, val: " +str(sclval))
+                    elif v2<v1 and v2<v3:
+                         sclval = sclval*1
+                         recs[:,it+1] = 1*sclval*recs[:,it+1]
+                         print("chose 2, val: " +str(sclval))
+                    elif v3<v2 and v3<v1:
+                         sclval = sclval*1.01
+                         recs[:,it+1] = 1.01*sclval*recs[:,it+1]
+                         print("chose 3, val: " +str(sclval))
+                         
+                vs.append(sclval)
+                   
+#               print("doing a 2nd reg phase projection")
+#               tmp=recs[:,it+1]
+#               tmp=np.reshape(tmp,[imsizer,imrizec])
+#               tmpp = np.angle(tmp)
+##               tmpptv=tv_proj(tmpp,mu=0.125,lmb=1,IT=15)
+##               tmpptv=low_pass(tmpp)
+##               tmpptv=tikh_proj(tmpp,niter=100,alpha=0.1)
+#               tmpptv=reg2_proj(tmpp,niter=20,alpha=0.1)
+#               tmp=np.abs(tmp)*np.exp(1j*tmpptv) # *(np.abs(tmp)>0.1)
+#               recs[:,it+1]=tmp.flatten().copy()
+
+#               print("doing a ABS phase projection")
+#               recs[:,it+1]=np.abs(recs[:,it+1])
+                   
+          else:   
+               print('skipping prior proj for the first onlydciters iter.s, doing only phase proj (then maybe DC proj as well) !!!')
+               recs[:,it+1]=recs[:,it].copy()
                
-               tmp=tmp1 + multip*tmp2 + (1-multip)*tmp3
-               recs[:,it+13] = tFT(tmp).flatten()
+               tmpa=np.abs(np.reshape(recs[:,it+1],[imsizer,imrizec]))
+               tmpp=np.angle(np.reshape(recs[:,it+1],[imsizer,imrizec]))
+                
+#               tmpatv=tv_proj(tmpa, mu=0.125,lmb=0.1,IT=15).flatten()
+               tmpatv = tmpa.copy().flatten()
+                
+               if reglmb == 0:
+                     print("skipping phase proj")
+                     tmpptv=tmpp.copy().flatten()
+                     
+               else:
+                    if regtype=='TV':
+                          tmpptv=tv_proj(tmpp, mu=0.125,lmb=reglmb,IT=regiter).flatten() #0.1, 15
+                    elif regtype=='reg2':
+                          tmpptv=reg2_proj(tmpp, alpha=reglmb,niter=regiter).flatten() #0.1, 15
+                          regval=reg2eval(tmpp)
+                          phaseregvals.append(regval)
+                          print("KCT-dbg: pahse reg value is " + str(regval))
+                    elif regtype=='abs':
+                          tmpptv=np.zeros_like(tmpp).flatten()
+                    elif regtype=='reg2_ls':
+                          tmpptv=reg2_proj_ls(tmpp, niter=regiter).flatten() #0.1, 15
+                          regval=reg2eval(tmpp)
+                          phaseregvals.append(regval)
+                          print("KCT-dbg: pahse reg value is " + str(regval))
+                    else:
+                          print("hey mistake!!!!!!!!!!")
+                
+#                tmpatv=tikh_proj(tmpa, niter=100, alpha=0.05).flatten()
+#                tmpptv=tikh_proj(tmpp, niter=100, alpha=0.05).flatten()
                
-               ftot, f_lik, f_dc = feval(recs[:,it+1])
-               print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
+               recs[:,it+1] = tmpatv*np.exp(1j*tmpptv)
                
-           elif N4BFcorr:
-               
-               n4bf_prev = n4bf.copy()
-               imgtmp = np.reshape(recs[:,it+12],[imsizer,imrizec]) # biasfree
-               imgtmp_bf = imgtmp*n4bf_prev # img with bf
-               
-               n4bf, N4bf_image = N4corrf( imgtmp_bf ) # correct the bf, this correction is supposed to be better now.
-               
-               imgtmp_new = imgtmp*n4bf
+
+          #do the DC projection every N iterations    
+          if  it < onlydciter+1 or it % dcprojiter == 0: # 
                
                
-               n4biasfields.append(n4bf)
-               
-               
-               
-               tmp1 = UFT(imgtmp_new, (1-uspat)  )
-               tmp3= data*uspat[:,:,np.newaxis]
-               
-               tmp=tmp1 + (1-multip)*tmp3 # multip=0 by default
-               recs[:,it+13] = (tFT(tmp)/n4bf).flatten()
-               
-               ftot, f_lik, f_dc = feval(recs[:,it+13])
-               if N4BFcorr:
-                     f_dc = dconst(recs[:,it+13].reshape([imsizer,imrizec])*n4bf)
-               print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
-              
-             
+               if not N4BFcorr:  
+                    tmp1 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (1-uspat)  )
+                    tmp2 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (uspat)  )
+                    tmp3= data*uspat[:,:,np.newaxis]
+                    
+                    tmp=tmp1 + multip*tmp2 + (1-multip)*tmp3
+                    recs[:,it+1] = tFT(tmp).flatten()
+                    
+                    #dbg:
+                    tmp2 = UFT(tFT(tmp), uspat)
+#                    np.savez('/home/ktezcan/unnecessary_stuff/tmps', tmp=tmp, tmp2=tmp2, uspat=uspat)
+                    
+                    ftot, f_lik, f_dc = feval(recs[:,it+1])
+                    print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
+                    
+               elif N4BFcorr:
+                    
+                    n4bf_prev = n4bf.copy()
+                    imgtmp = np.reshape(recs[:,it+1],[imsizer,imrizec]) # biasfree
+                    imgtmp_bf = imgtmp*n4bf_prev # img with bf
+                    
+                    n4bf, N4bf_image = N4corrf( imgtmp_bf ) # correct the bf, this correction is supposed to be better now.
+                    
+                    imgtmp_new = imgtmp*n4bf
+                    
+                    
+                    n4biasfields.append(n4bf)
+                    
+                    
+                    
+                    tmp1 = UFT(imgtmp_new, (1-uspat)  )
+                    tmp2 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (uspat)  )
+                    tmp3= data*uspat[:,:,np.newaxis]
+                    
+                    tmp=tmp1 + multip*tmp2 + (1-multip)*tmp3 # multip=0 by default
+                    recs[:,it+1] = (tFT(tmp)/n4bf).flatten()
+                    
+                    ftot, f_lik, f_dc = feval(recs[:,it+1])
+                    print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
+                    
+#               elif N4BFcorr:
+#                    
+#                    n4bf_prev = n4bf.copy()
+##                    imgtmp = np.reshape(recs[:,it+1],[imsizer,imrizec]) # biasfree
+##                    imgtmp_bf = imgtmp*n4bf_prev # img with bf
+##                    
+##                    n4bf, N4bf_image = N4corrf( imgtmp_bf ) # correct the bf, this correction is supposed to be better now.
+##                    
+##                    imgtmp_new = imgtmp*n4bf
+#                    
+#                    
+#                    n4biasfields.append(n4bf)
+#                    
+#                    
+#                    
+#                    tmp1 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec])*n4bf_prev, (1-uspat)  )
+#                    tmp2 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (uspat)  )
+#                    tmp3= data*uspat[:,:,np.newaxis]
+#                    
+#                    tmp=tmp1 + multip*tmp2 + (1-multip)*tmp3 # multip=0 by default
+#                    
+#                    tmp = tFT(tmp)
+#                    n4bf_new, N4bf_image = N4corrf( tmp ) # correct the bf, this correction is supposed to be better now.
+#                    
+#                    
+#                    recs[:,it+1] = (tmp/n4bf_new).flatten()
+#                    
+#                    ftot, f_lik, f_dc = feval(recs[:,it+1])
+#                    print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
+                    
+               else:
+                    pass  # n4bf, N4bf_image = N4corrf( np.reshape(recs[:,it+1],[imsizer,imrizec]) )
+     
 #               
+#          pickle.dump(recs,open('/home/ktezcan/unnecessary_stuff/recs','wb'))  
+#            
+          #endif     
+     
           
           
-     return recs, 0, phaseregvals, n4biasfields
+     return recs, vs, phaseregvals, n4biasfields
 
 
 
      
-#     for it in range(numiter-1):
-#          
-#          
-#          if it > onlydciter:
-#               alpha=alphas[it]
-#          
-#               ftot, f_lik, f_dc = feval(recs[:,it])
-#               gtot, g_lik, g_dc = geval(recs[:,it])
-#               
-#               print("it no: " + str(it) + " f_tot= " + str(ftot) + " f_lik= " + str(f_lik) + " f_dc (1e6)= " + str(f_dc/1e6) + " |g_lik|= " + str(np.linalg.norm(g_lik)) + " |g_dc|= " + str(np.linalg.norm(g_dc)) )
-#               
-#               recs[:,it+1]=recs[:,it] - alpha* g_lik
-#                   
-#     #          recs[:,it+1]=np.abs(recs[:,it+1])*np.exp(1j*truephase).flatten()
-#     #          print('abs proj!')
-#     #          recs[:,it+1]=np.abs(recs[:,it+1])
-#                   
-#          else:
-#               print("no prior proj!")
-#
-#          #do the DC projection every N iterations    
-#          if it % dcprojiter == 0:
-#
-#               tmp1 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (1-uspat)  )
-#               tmp2 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (uspat)  )
-#               tmp3= data*uspat[:,:,np.newaxis]
-#
-#
-#               tmp=tmp1 + multip*tmp2 + (1-multip)*tmp3
-#               recs[:,it+1] = tFT(tmp).flatten()
-#               
-#               
-#
-#               ftot, f_lik, f_dc = feval(recs[:,it+1])
-#               print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
-         
-          
-     
-     
-     
-     
-
-
-
-
-def ADMM_recon(imo, usfact2us, usfactnet):
-
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imorig.mat', {'im_ori': imo})
-     
-     print("starting the ADMMNet recon")
-     
-     pars = (" 5*77, "
-     "clear all;"
-     "global usfact2us; "
-     "global usfactnet; "
-     "usfact2us = " + str(usfact2us) + "; "
-     "usfactnet = " + str(usfactnet) + "; "
-     "cd '/home/ktezcan/Code/from_other_people/Deep-ADMM-Net-master/Deep-ADMM-Net-master', " 
-     "main_ADMM_Net_test_3, "
-     ""
-     "exit ")
-     
-     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-     
-#     print(proc.stdout)
-     
-     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/rec_image.mat')
-     imout_admm = r['rec_image']
-     
-     
-     print("ADMMNet recon ended")
-     
-     return imout_admm
-
-
-def TV_recon(imo, uspat):
-     
-     
-     print("starting the BART TV recon")
-     
-     import subprocess
-     
-     path = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00/python"
-     os.environ["TOOLBOX_PATH"] = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00"
-     sys.path.append(path);
-     
-     from bart import bart
-     import cfl
-
-     
-     #uspatf = pickle.load(open('/home/ktezcan/modelrecon/recon_results/j_pat_'+flname,'rb'))
-     
-     print("writing cfl files")
-     
-     #cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp',  data )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp',  np.fft.fftshift(np.fft.fft2( (imo)))*uspat /np.sum(np.abs(imo)) )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/sens', np.ones(imo.shape))
-     
-     #proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R I:0:0.045 -R T:3:0:0.025 -u1 -C20 -i500 -d4 \
-     
-     print("cfl files written")
-                             
-     proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R T:3:0:0.0075 -u1 -C20 -i4500 -d4 \
-                             /scratch_net/bmicdl02/Data/test/ksp /scratch_net/bmicdl02/Data/test/sens \
-                             /scratch_net/bmicdl02/Data/test/imout"], stdout=subprocess.PIPE, shell=True)
-     
-     imout_tv=np.fft.ifftshift(cfl.readcfl('/scratch_net/bmicdl02/Data/test/imout'))
-     imout_tv = imout_tv * np.sum(np.abs(imo))/np.sum(np.abs(imout_tv))
-     
-     print('BART TV recon ended')
-     
-     return imout_tv
-
-def TV_reconu(usksp, uspat):
-     
-     
-     print("starting the BART TV recon")
-     
-     import subprocess
-     
-     path = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00/python"
-     os.environ["TOOLBOX_PATH"] = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00"
-     sys.path.append(path);
-     
-     from bart import bart
-     import cfl
-
-     
-     #uspatf = pickle.load(open('/home/ktezcan/modelrecon/recon_results/j_pat_'+flname,'rb'))
-     
-     print("writing cfl files")
-     
-     #cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp',  data )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp', usksp )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/sens', np.ones(usksp.shape))
-     
-     #proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R I:0:0.045 -R T:3:0:0.025 -u1 -C20 -i500 -d4 \
-     
-     print("cfl files written")
-                             
-     proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R T:3:0:0.0075 -u1 -C20 -i4500 -d4 \
-                             /scratch_net/bmicdl02/Data/test/ksp /scratch_net/bmicdl02/Data/test/sens \
-                             /scratch_net/bmicdl02/Data/test/imout"], stdout=subprocess.PIPE, shell=True)
-     
-     imout_tv=np.fft.ifftshift(cfl.readcfl('/scratch_net/bmicdl02/Data/test/imout'))
-     
-     
-     print('BART TV recon ended')
-     
-     return imout_tv
-
-
-#do the matlab DLMRI recon
-#=======================================================================
-#=======================================================================
-#=======================================================================
-#=======================================================================
-#=======================================================================
-
-def DLMRI_recon(imo, uspat):
-     
-     def FT (x):
-          #inp: [nx, ny]
-          #out: [nx, ny]
-          return np.fft.fftshift(    np.fft.fft2(  x , axes=(0,1)  ),   axes=(0,1)    )
-     
-     def UFT(x, uspat):
-          #inp: [nx, ny], [nx, ny]
-          #out: [nx, ny]
-          
-          return uspat*FT(x)
-     
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/uspat.mat', {'Q1': uspat})
-     dd=UFT(np.fft.fftshift(imo), uspat)
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imku.mat', {'imku': dd})
-     
-     pars = (" 5*77, "
-     "clear all;"
-     "DLMRIparams.num = 100; " 
-     "DLMRIparams.nu = 100000; "
-     "DLMRIparams.r = 2; "
-     "DLMRIparams.n = 36; "
-     "DLMRIparams.K2 = 36; "
-     "DLMRIparams.N = 200*36; "
-     "DLMRIparams.T0 = round((0.2)*DLMRIparams.n); "
-     "DLMRIparams.KSVDopt = 2; "
-     "DLMRIparams.thr = (0.023)*[2 2 2 2 1.4*ones(1,DLMRIparams.num-4)]; "
-     "DLMRIparams.numiterateKSVD = 15; "
-     "load '/home/ktezcan/unnecessary_stuff/uspat.mat' , "
-     "load '/home/ktezcan/unnecessary_stuff/imku.mat' , "
-     #"disp('CAME HERE 3'), "
-     "addpath '/home/ktezcan/Code/from_other_people/DLMRI/DLMRI_v6/', "
-     "[imo, ps] = DLMRI(imku,Q1,DLMRIparams,0,[],0);"
-     "imo = ifftshift(imo), "
-     "5*7, "
-     #"disp('CAME HERE 4'), "
-     "save '/home/ktezcan/unnecessary_stuff/imotestback.mat','imo', "
-     "exit ")
-     
-     print("starting the DLMRI recon")
-     
-     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-     
-     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/imotestback.mat')
-     imout_dlmri = np.fft.fftshift(r['imo'])
-     
-     imout_dlmri = imout_dlmri * np.linalg.norm(imo) / np.linalg.norm(imout_dlmri)
-          
-     print('DLMRI recon ended')
-     
-     return imout_dlmri
-#
-#
-#def ADMM_recon(imo, usfact):
-#
-#     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imorig.mat', {'im_ori': imo})
-#     
-#     print("starting the ADMMNet recon")
-#     
-#     pars = (" 5*77, "
-#     "clear all;"
-#     "global usrat; "
-#     "usrat = " + str(usfact) + "; "
-#     "cd '/home/ktezcan/Code/from_other_people/Deep-ADMM-Net-master/Deep-ADMM-Net-master', " 
-#     "main_ADMM_Net_test_2, "
-#     ""
-#     "exit ")
-#     
-#     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-#     
-#     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/rec_image.mat')
-#     imout_admm = r['rec_image']
-#     
-#     
-#     print("ADMMNet recon ended")
-#     
-#     return imout_admm
-
-def BM3D_MRI_recon(imo, uspat):
-
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imorig.mat', {'im_ori': imo})
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/mask.mat', {'Q1': np.fft.fftshift(uspat) })
-     
-     print("starting the BM3D MRI recon")
-     
-     pars = (" 5*77, "
-     "cd '/home/ktezcan/Code/from_other_people/BM3D_MRI_toolbox/', " 
-     "BM3D_MRI_v1_kerem, "
-     ""
-     "exit ")
-     
-     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-     
-     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/imout_bm3d.mat')
-     imout_bm3d = r['im_rec_BM3D']
-     
-     imout_bm3d = imout_bm3d * np.sum(np.abs(imo))/np.sum(np.abs(imout_bm3d))
-     
-     print("BM3D MRI recon ended")
-     
-     return imout_bm3d
-
-
-
-
-
-
-
 
 

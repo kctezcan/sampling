@@ -219,7 +219,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
 #     dbgimpl, ufttff, bb
       
      dec_muv, ufttffv, bbv = sess.run([dec_mu, ufttff, bb], feed_dict={dbgimpl:mapim,  x_inp: np.tile(mapim[np.newaxis,:,:],[5,1,1]), z_samples: np.tile((zsc)[np.newaxis,:,:],[5,1,1,1]), uspattff: uspat[:,:,0], sensmapsplf:sensmaps, yy:usksp, phaseimf:mapphase, sclfactorf:sclfct_cur, alphaiterpl:alphaval, biasfieldtf: biasfield })
-     np.savez('/home/ktezcan/unnecessary_stuff/dbgstuff', mapim=mapim,  ufttffv=ufttffv,  bbv=bbv, dec_muv=dec_muv, itsfv=itsfv, usksp=usksp)
+#     np.savez('/home/ktezcan/unnecessary_stuff/dbgstuff', mapim=mapim,  ufttffv=ufttffv,  bbv=bbv, dec_muv=dec_muv, itsfv=itsfv, usksp=usksp)
      
      not_overlapping = []
      for ix in range(im_kspsize[1][2]):
@@ -408,8 +408,8 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      acceptctr = 0
           
      
-     np.savez(directoryname+'/arrays_model_precision_value'+str(model_precision_value)+'_withscl_r35_scl'+str(scl)+'_sx'+str(sx)+'_empPrior'+str(empiricalPrior)+'_step'+str(step)+'_samp_init', \
-             zsc=zsc) # , gammavs=gammavs
+#     np.savez(directoryname+'/arrays_model_precision_value'+str(model_precision_value)+'_withscl_r35_scl'+str(scl)+'_sx'+str(sx)+'_empPrior'+str(empiricalPrior)+'_step'+str(step)+'_samp_init', \
+#             zsc=zsc) # , gammavs=gammavs
      
      
      for ix in range(1, numsamp+1):

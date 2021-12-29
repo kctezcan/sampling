@@ -27,14 +27,14 @@ print("KCT-info: running script from directory: " + scriptdir)
 os.chdir(scriptdir)
 
 #make the necessary folders if not existing
-if not os.path.exists(os.getcwd() + '/../../results/reconstruction/'):
-    os.mkdir(os.getcwd() + '/../../results/reconstruction/')
+if not os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/'):
+    os.mkdir(os.getcwd() + '/../../results/usz/reconstruction/')
     
-if not os.path.exists(os.getcwd() + '/../../results/sampling/'):
-    os.mkdir(os.getcwd() + '/../../results/sampling/')
+if not os.path.exists(os.getcwd() + '/../../usz/results/samples/'):
+    os.mkdir(os.getcwd() + '/../../results/usz/samples/')
     
-if not os.path.exists(os.getcwd() + '/../../results/sampling/decoder_samples/'):
-    os.mkdir(os.getcwd() + '/../../results/sampling/decoder_samples/')
+if not os.path.exists(os.getcwd() + '/../../results/usz/samples/decoder_samples/'):
+    os.mkdir(os.getcwd() + '/../../results/usz/samples/decoder_samples/')
 
 
 
@@ -260,12 +260,12 @@ mode = 'MRIunproc'
 
 
 # reconstruct the image if it does not exist     
-if os.path.exists(os.getcwd() + '/../../results/reconstruction/rec_usz_us'+str(usfact)):
+if os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact)):
     print("KCT-info: reconstruction already exists, loading it...")
-    rec_vae = pickle.load(open('../../results/reconstruction/rec_usz_us'+str(usfact),'rb'))
+    rec_vae = pickle.load(open('../../results/usz/reconstruction/rec_usz_us'+str(usfact),'rb'))
 else:    
     rec_vae = vaerecon5.vaerecon(usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter, onlydciter=onlydciter,lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
-    pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
+    pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
     rec_vae = rec_vae[0]
 
 
@@ -327,196 +327,100 @@ if args.mask4sampling:
     mapreconpad = mapreconpad*(np.abs(mapreconpad)>0.1)
    
 #where to save the samples    
-dir4samples = os.getcwd() + '/../../results/sampling/decoder_samples/'
+dir4decodersamples = os.getcwd() + '/../../results/usz/samples/decoder_samples/'
 
 #run the sampling
-sampling  = vaesampling.vaesampling( usksp=usksp_prew, sensmaps=sensmaps_prew, maprecon=mapreconpad, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=dir4samples, im_kspsize=[imgsize, kspsize], model_prec_val=model_prec_val, numinversioniters=numinversioniters, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=BFcorr, biasfield=n4biasfield, numsamp = numsamp, saveevery = saveevery, noisemodifier=noisemodifier, rollval = rollval)
-
-
-
+sampling  = vaesampling.vaesampling( usksp=usksp_prew, sensmaps=sensmaps_prew, maprecon=mapreconpad, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=dir4decodersamples, im_kspsize=[imgsize, kspsize], model_prec_val=model_prec_val, numinversioniters=numinversioniters, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=BFcorr, biasfield=n4biasfield, numsamp = numsamp, saveevery = saveevery, noisemodifier=noisemodifier, rollval = rollval)
 
 
 ###############################################################################
 ### Now do the proper sampling from p(x\y,z)
 ###############################################################################
+dir4samples = os.getcwd() + '/../../results/usz/samples/'
 
-if args.runsampling_step2:
-    
-    import os
-          
-    sampling_base = '/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/samples/usz_images/bfc_rolled/'+args.base+'R'+str(R)+'_sli'+str(args.sli)+'_prew'+str(args.prewhitening)+'_masking'+str(args.mask4sampling)
-     
-#    dirname=sampling_base+'samples/vol'+str(vol)+'_sli'+str(sli)+'_us'+str(R)+'_kspns'+str(args.kspnoisemultip)
-    
-    try:
-         os.mkdir(dirname)
-    except:
-         pass # probably the directory already exists
-         
-    lastiter = 101 # int((np.floor(rec_vae.shape[1]/13)-2)*13)
-    maprecon = rec_vae[:,lastiter].reshape([usksp_prew.shape[0], usksp_prew.shape[1]])
-    imgsize=[182,210] # [252,308]# [280,336]#[182,210]
-    kspsize=[usksp_prew.shape[0], usksp_prew.shape[1],1] # [238,266]
-    pad2edges00=int(np.ceil((kspsize[0]-imgsize[0])/2 ))
-    pad2edges01=int(np.floor((kspsize[0]-imgsize[0])/2 ))
-    pad2edges10=int(np.ceil((kspsize[1]-imgsize[1])/2 ))
-    pad2edges11=int(np.floor((kspsize[1]-imgsize[1])/2 ))
-    
-    pads = -np.array( [ [pad2edges00,pad2edges01] , [pad2edges10,pad2edges11] ] )
-    
-    
-    import skimage.morphology
-    eroded_mask  = skimage.morphology.binary_erosion((np.abs(maprecon)>0.3), selem=np.ones([3,3]))
-    rollval = int((eroded_mask.shape[1] - np.where(eroded_mask==1)[1].max() - np.where(eroded_mask==1)[1].min())/2)
+#get the padded bias field  
+n4biasfieldpad = padslice_2d(n4biasfield, pads, rollval)
 
-      
-    empiricalPrior=True # False#True
-    lowres =  False
-      
-    # bias field stuff:
-    import SimpleITK as sitk
-    
-    ddimcabs = np.abs(maprecon)
-    
-    inputImage = sitk.GetImageFromArray(ddimcabs, isVector=False)
-    corrector = sitk.N4BiasFieldCorrectionImageFilter();
-    inputImage = sitk.Cast(inputImage, sitk.sitkFloat32)
-    output = corrector.Execute(inputImage)
-    N4biasfree_output = sitk.GetArrayFromImage(output)
-    
-    n4biasfield = ddimcabs/(N4biasfree_output+1e-9)   
+#get the padded and centered brain
+mapreconpad = padslice_2d(maprecon, pads, rollval)
+
+# define the necessary functions
+def cdp(a, b):
+     #complex dot product
+     return np.sum(a*np.conj(b))
+
+#the Conjugate Gradient method for the matrix inversion
+def funmin_cg_ksp(mux, uspat, nsksp, nssx, y, n4biasfield, numiter = 10):
+
+    phs = np.exp(1j*np.angle(mapreconpad))
     n4biasfieldpad = padslice_2d(n4biasfield, pads, rollval)
-    
-    mapreconpad = padslice_2d(maprecon, pads, rollval)
-
-    # define the necessary functions
-    def cdp(a, b):
-         return np.sum(a*np.conj(b))
-    
-    
-    def funmin_cg_ksp(mux, uspat, nsksp, nssx, y, n4biasfield, numiter = 10):
-#        y=y[:,:,:]
-        
-#        ddimcpad = padslice_2d(ddimc_prew, pads)
-#        phs = np.exp(1j*np.angle(ddimcpad))
-        phs = np.exp(1j*np.angle(mapreconpad))
-#        print(phs.shape)
-        
-        
-        n4biasfieldpad = padslice_2d(n4biasfield, pads, rollval)
-#        n4biasfieldpad = 1
-        
-        normfact = 1 #n2max/n1max
-        
-#        mux = normfact*mux
-        
-        
-        def A(m):
-            tmp1 = normfact*FT(n4biasfield*padslice_2d( (1/nssx)*padslice_2d( n4biasfield*tFT(normfact*m), -pads, rollval), pads, rollval))
-            
-            tmp2 = (1/nsksp)*np.tile(uspat[:,:,np.newaxis],y.shape[2])*m
-            
-            return tmp1 + tmp2
-            
-               
-        its = np.zeros([numiter+1,y.shape[0],y.shape[1], y.shape[2]], dtype=np.complex128)
-        
-        b1 =   FT((1/nssx)*padslice_2d(n4biasfieldpad*n4biasfieldpad*n4biasfieldpad*phs*mux, -pads, rollval)) *normfact
-        b2 =  (1/nsksp)*np.tile(uspat[:,:,np.newaxis],y.shape[2])*y 
-    
-        
-        b= b1+b2
-        
-        
-#        its[0,:,:] = b.copy()
-         
-        r = b - A(its[0,:,:])
-        
-    #    print("norm of starting r: " + str(np.linalg.norm(r)))
-        
-        p = r.copy()
-        
-        
-        errtmps = []
-        alphas = []
-        
-        for ix in range(numiter):
-         
-            rTr_curr = cdp(r,r) # np.sum(r*r)
-            alpha = rTr_curr / cdp(p, A(p)) # np.sum(p*A(p, uspat))
-            alphas.append(alpha)
-         
-            its[ix+1,:, :] = its[ix,:, :] + alpha* p
-            
-            errtmp = np.linalg.norm(A(its[ix,:,:]) - b) / np.linalg.norm(b)*100
-            errtmps.append(errtmp)
-         
-            r = r - alpha*A(p)
-         
-            beta = cdp(r,r)/rTr_curr
-         
-            p = r + beta * p
-            
-#        print(errtmps)
-         
-        return its, errtmps, alphas
-    
-    
-    def convexsum(mux, y, uspat, nssx, nsksp):
-        
-#        y=y[:,:,0]
-        tmp1_1 = FT(padslice_2d(n4biasfieldpad*np.exp(1j*np.angle(mapreconpad))*mux, -pads, rollval))
-        tmp1_2 = y
-        
-#        normfact = np.array( [  np.linalg.norm(np.abs(tmp1_2[:,:,ix]))/np.linalg.norm(np.abs(tmp1_1[:,:,ix])) for ix in range(tmp1_1.shape[2]) ])
-        normfact =  np.max(np.abs(tmp1_2[:,:,ix]))/np.max(np.abs(tmp1_1[:,:,ix])) 
-        
-        
-        tmp1 = normfact*(1/nssx)*tmp1_1  + (1/nsksp)*tmp1_2
-        
-        tmp2 = (1/nssx)*np.ones_like(np.tile(uspat[:,:,np.newaxis],[1,1,y.shape[2]])) + (1/nsksp)*np.tile(uspat[:,:,np.newaxis],[1,1,y.shape[2]])
-        
-        return tmp1/tmp2
-    
-    #now take the images as mean f p(x|y,z)    
-#    estim_ksp_ns = np.array([1/usksp[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,ix].var()/50 for ix in range(usksp.shape[2])])
-    estim_ksp_ns = np.array([1/usksp_prew[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,ix].var()/50 for ix in range(usksp.shape[2])])
-
-    nssx=1
-    
-    ddimcabs = np.abs(maprecon)
-    inputImage = sitk.GetImageFromArray(ddimcabs, isVector=False)
-    corrector = sitk.N4BiasFieldCorrectionImageFilter();
-    inputImage = sitk.Cast(inputImage, sitk.sitkFloat32)
-    output = corrector.Execute(inputImage)
-    N4biasfree_output = sitk.GetArrayFromImage(output)
-#        
-    n4biasfield = ddimcabs/(N4biasfree_output+1e-9)   
-    
-    if not os.path.exists(sampling_base + '/samples_x_given_yz/'):
-        print('folder to save samples does not exist...')
-        os.makedirs(sampling_base + '/samples_x_given_yz/')
-        print('... created one!')
+    normfact = 1 #n2max/n1max
  
-    for ix in range(0, 100):
-        print('reading and processing file '+str(ix+1)+'/100')
-        print('--------------------------------------------')
-        aa = np.load(  sampling_base + '/arrays_model_precision_value50_withscl_r35_scl50_sx1_empPriorTrue_step0.001_samp'+str(ix+1)+'.npz'   )
-       
-        ims = aa['ims']
-        
-        ress = []
-        for ixim in range(0,ims.shape[0],10):
-            print('processing sample '+str(int(ixim/10)+1)+'/'+str(int(ims.shape[0]/10)))
-            res = funmin_cg_ksp(np.abs(ims[ixim]), uspat, estim_ksp_ns, nssx, usksp_prew , n4biasfield, numiter=10)[0][-1]
-            res = np.abs(tFT(res))
-            ress.append(res)
-        
-        ress = np.array(ress)
-        np.save(sampling_base + '/samples_x_given_yz/samps_nsksp_'+str(ix+1), ress)
-        print('saved samples!')
     
+    def A(m):
+        tmp1 = normfact*FT(n4biasfield*padslice_2d( (1/nssx)*padslice_2d( n4biasfield*tFT(normfact*m), -pads, rollval), pads, rollval))
+        
+        tmp2 = (1/nsksp)*np.tile(uspat[:,:,np.newaxis],y.shape[2])*m
+        
+        return tmp1 + tmp2
+    
+    its = np.zeros([numiter+1,y.shape[0],y.shape[1], y.shape[2]], dtype=np.complex128)
+    
+    b1 =   FT((1/nssx)*padslice_2d(n4biasfieldpad*n4biasfieldpad*n4biasfieldpad*phs*mux, -pads, rollval)) *normfact
+    b2 =  (1/nsksp)*np.tile(uspat[:,:,np.newaxis],y.shape[2])*y 
+    b= b1+b2
+    r = b - A(its[0,:,:])
+    p = r.copy()
+    
+    errtmps = []
+    alphas = []
+    
+    for ix in range(numiter):
      
+        rTr_curr = cdp(r,r) # np.sum(r*r)
+        alpha = rTr_curr / cdp(p, A(p)) # np.sum(p*A(p, uspat))
+        alphas.append(alpha)
+     
+        its[ix+1,:, :] = its[ix,:, :] + alpha* p
+        
+        errtmp = np.linalg.norm(A(its[ix,:,:]) - b) / np.linalg.norm(b)*100
+        errtmps.append(errtmp)
+     
+        r = r - alpha*A(p)
+     
+        beta = cdp(r,r)/rTr_curr
+     
+        p = r + beta * p        
+     
+    return its, errtmps, alphas
+
+
+
+#now estimate the k-space noise again 
+estim_ksp_ns = np.array([1/usksp_prew[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,ix].var()/50 for ix in range(usksp.shape[2])])
+nssx=1
+ 
+numfiles = int(num_iter/saveevery)
+
+for ix in range(numfiles):
+    print('reading and processing file '+str(ix+1)+'/'+str(numfiles))
+    print('--------------------------------------------')
+    aa = np.load(  dir4decodersamples + '/samples'+str(ix+1)+'.npz'   )
+   
+    ims = aa['ims'] #the decoder output sample
+    
+    ress = []
+    for ixim in range(0,ims.shape[0],10): # take only one tenth of the decoder smaples to save time
+        print('processing sample '+str(int(ixim/10)+1)+'/'+str(int(ims.shape[0]/10)))
+        res = funmin_cg_ksp(np.abs(ims[ixim]), uspat, estim_ksp_ns, nssx, usksp_prew , n4biasfield, numiter=10)[0][-1]
+        res = np.abs(tFT(res))
+        ress.append(res)
+    
+    ress = np.array(ress)
+    np.save(dir4samples + '/samples_'+str(ix+1), ress)
+    print('saved samples!')
+
+ 
 
 
 ####################################################
