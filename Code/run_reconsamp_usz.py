@@ -30,7 +30,7 @@ os.chdir(scriptdir)
 if not os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/'):
     os.mkdir(os.getcwd() + '/../../results/usz/reconstruction/')
     
-if not os.path.exists(os.getcwd() + '/../../usz/results/samples/'):
+if not os.path.exists(os.getcwd() + '/../../results/usz/samples/'):
     os.mkdir(os.getcwd() + '/../../results/usz/samples/')
     
 if not os.path.exists(os.getcwd() + '/../../results/usz/samples/decoder_samples/'):
@@ -323,7 +323,7 @@ mask4sampling = True
 numsamp = 10000
 saveevery = 100
 
-if args.mask4sampling:
+if mask4sampling:
     mapreconpad = mapreconpad*(np.abs(mapreconpad)>0.1)
    
 #where to save the samples    
