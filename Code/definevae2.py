@@ -258,7 +258,8 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
      if Melmodels=='':
           if chunks40:
                step=500000
-               saver.restore(sess, '../trained_models/cvae_MSJhalf_40chunks_fcl'+str(fcl_dim)+'_lat'+str(lat_dim)+'_ns'+str(noisy)+'_ps'+str(patchsize)+'_step'+str(step))
+#               print("KCT-info:  current directory is: " + os.getcwd())
+               saver.restore(sess, os.getcwd()+'/../../trained_models/cvae_MSJhalf_40chunks_fcl'+str(fcl_dim)+'_lat'+str(lat_dim)+'_ns'+str(noisy)+'_ps'+str(patchsize)+'_step'+str(step))
                print("KCT-info: loaded the new model, trained patchwise on the 40 chunk dataset")
           else:
                raise ValueError
