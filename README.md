@@ -18,4 +18,34 @@ Here we show the results for the proposed l-MALA method as well as the compared 
 ![plot](./gifs/gif_vol4_usfact5_kspns0.gif)
 
 ## Code
-The code will be published here later as well.
+The code is published here as well.
+The Code assumes such a folder structure: 
+```
+project
+└─── sampling/
+│    └─── Code/
+│    └─── example_data/
+│         └─── hcp_image/ 
+│         └─── usz_image/         
+│    └─── gifs/
+│    README.md
+│
+└─── results/
+│    └─── hcp/
+│         └─── reconstruction/
+│         └─── samples/
+│              └─── decoder_samples/
+│     └─── usz/
+│          └─── reconstruction/
+│          └─── samples/
+│               └─── decoder_samples/
+│            
+└─── trained_models/ 
+│    └─── covariances_emp_prior/
+```
+This structure will otherwise be created to some extent.
+
+
+This repo contains only the contents of the "./sampling/" folder, the rest can be downloaded or generated:
+1. The trained models including the parameters of the empirical latent distribution can be downloaded at https://polybox.ethz.ch/index.php/s/KtqM19ttB40hX8R (around 650 MB).
+2. The results of the example images can be downloaded at ...
