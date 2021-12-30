@@ -19,8 +19,8 @@ import argparse
 ############################################################################### 
 
 run_decoder_sampling = False
-run_proper_sampling = True
-visualize = False
+run_proper_sampling = False
+visualize = True
 
 
 ###############################################################################
@@ -433,6 +433,8 @@ if run_proper_sampling:
 ### Now look at these samples
 ###############################################################################
 if visualize:
+    
+    numfiles = int(numsamp/saveevery)
     
     samps = []
     for ix in range(numfiles):
