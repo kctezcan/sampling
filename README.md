@@ -4,7 +4,7 @@ by Kerem C. Tezcan, Neerav Karani, Christian F. Baumgartner and Ender Konukoglu
 All authors are with the Computer Vision Lab, ETH Zürich, Switzerland. CFB is also with the Machine Learning in Medical Image Analysis Group, University of Tübingen.
 
 ## Paper
-The main idea is to sampling multiple reconstructions instead of only reconstructing a single image for undersampled MR imaging. This way one can find multiple solutions to the ill-posed inverse problem and can characterize the uncertainty in the solutions as well.
+The main idea is to sampling multiple reconstructions instead of only reconstructing a single image for undersampled MR imaging. This way one can find multiple solutions to the ill-posed inverse problem and can characterize the uncertainty in the solutions as well. Notice that this is a different approach than obtaining model uncertainty by Bayesian networks/dropout or modeling aleatoric uncertainty by predicting errors with heteroscedastic models.
 
 
 The paper is under review. A preprint version can be found here: https://arxiv.org/abs/2010.00042.
@@ -47,5 +47,5 @@ This structure will otherwise be created to some extent.
 
 ### Trained models and results
 This repo contains only the contents of the "./sampling/" folder, the rest can be downloaded or generated:
-1. The trained models including the parameters of the empirical latent distribution can be downloaded at https://polybox.ethz.ch/index.php/s/KtqM19ttB40hX8R (around 650 MB).
+1. The trained models including the parameters of the empirical latent distribution can be downloaded at https://polybox.ethz.ch/index.php/s/KtqM19ttB40hX8R (around 650 MB) and should be placed into a folder as shown above.
 2. The results of the example images can be downloaded at (coming soon... ).
