@@ -18,6 +18,11 @@ import argparse
 ### 3. the samples from the proper posterior
 ############################################################################### 
 
+run_reconstruction = False
+run_decoder_sampling = False
+run_proper_sampling = True
+visualize = False
+
 
 ###############################################################################
 ### Get the directory of the script to access files later
@@ -28,13 +33,13 @@ os.chdir(scriptdir)
 
 #make the necessary folders if not existing
 if not os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/'):
-    os.mkdir(os.getcwd() + '/../../results/usz/reconstruction/')
+    os.mkdir(os.getcwd() + '../../results/usz/reconstruction/')
     
 if not os.path.exists(os.getcwd() + '/../../results/usz/samples/'):
-    os.mkdir(os.getcwd() + '/../../results/usz/samples/')
+    os.mkdir(os.getcwd() + '../../results/usz/samples/')
     
 if not os.path.exists(os.getcwd() + '/../../results/usz/samples/decoder_samples/'):
-    os.mkdir(os.getcwd() + '/../../results/usz/samples/decoder_samples/')
+    os.mkdir(os.getcwd() + '../../results/usz/samples/decoder_samples/')
 
 
 
@@ -258,15 +263,16 @@ onlydciter=0
 chunks40=True
 mode = 'MRIunproc'
 
-
-# reconstruct the image if it does not exist     
-if os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact)):
-    print("KCT-info: reconstruction already exists, loading it...")
-    rec_vae = pickle.load(open('../../results/usz/reconstruction/rec_usz_us'+str(usfact),'rb'))
-else:    
-    rec_vae = vaerecon5.vaerecon(usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter, onlydciter=onlydciter,lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
-    pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
-    rec_vae = rec_vae[0]
+if run_reconstruction:
+    
+    # reconstruct the image if it does not exist     
+    if os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact)):
+        print("KCT-info: reconstruction already exists, loading it...")
+        rec_vae = pickle.load(open('../../results/usz/reconstruction/rec_usz_us'+str(usfact),'rb'))
+    else:    
+        rec_vae = vaerecon5.vaerecon(usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter, onlydciter=onlydciter,lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
+        pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
+        rec_vae = rec_vae[0]
 
 
 
@@ -329,8 +335,9 @@ if mask4sampling:
 #where to save the samples    
 dir4decodersamples = os.getcwd() + '/../../results/usz/samples/decoder_samples/'
 
-#run the sampling
-sampling  = vaesampling.vaesampling( usksp=usksp_prew, sensmaps=sensmaps_prew, maprecon=mapreconpad, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=dir4decodersamples, im_kspsize=[imgsize, kspsize], model_prec_val=model_prec_val, numinversioniters=numinversioniters, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=BFcorr, biasfield=n4biasfield, numsamp = numsamp, saveevery = saveevery, noisemodifier=noisemodifier, rollval = rollval)
+if run_decoder_sampling: 
+    #run the sampling
+    sampling  = vaesampling.vaesampling( usksp=usksp_prew, sensmaps=sensmaps_prew, maprecon=mapreconpad, mapphase=np.exp(1j*np.angle(maprecon)) , directoryname=dir4decodersamples, im_kspsize=[imgsize, kspsize], model_prec_val=model_prec_val, numinversioniters=numinversioniters, empiricalPrior = empiricalPrior, lowres=lowres, BFcorr=BFcorr, biasfield=n4biasfield, numsamp = numsamp, saveevery = saveevery, noisemodifier=noisemodifier, rollval = rollval)
 
 
 ###############################################################################
@@ -395,303 +402,64 @@ def funmin_cg_ksp(mux, uspat, nsksp, nssx, y, n4biasfield, numiter = 10):
     return its, errtmps, alphas
 
 
+if run_proper_sampling:
 
-#now estimate the k-space noise again 
-estim_ksp_ns = np.array([1/usksp_prew[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,ix].var()/50 for ix in range(usksp.shape[2])])
-nssx=1
- 
-numfiles = int(num_iter/saveevery)
-
-for ix in range(numfiles):
-    print('reading and processing file '+str(ix+1)+'/'+str(numfiles))
-    print('--------------------------------------------')
-    aa = np.load(  dir4decodersamples + '/samples'+str(ix+1)+'.npz'   )
-   
-    ims = aa['ims'] #the decoder output sample
+    #now estimate the k-space noise again 
+    estim_ksp_ns = np.array([1/usksp_prew[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,ix].var()/50 for ix in range(usksp.shape[2])])
+    nssx=1
+     
+    numfiles = int(numsamp/saveevery)
     
-    ress = []
-    for ixim in range(0,ims.shape[0],10): # take only one tenth of the decoder smaples to save time
-        print('processing sample '+str(int(ixim/10)+1)+'/'+str(int(ims.shape[0]/10)))
-        res = funmin_cg_ksp(np.abs(ims[ixim]), uspat, estim_ksp_ns, nssx, usksp_prew , n4biasfield, numiter=10)[0][-1]
-        res = np.abs(tFT(res))
-        ress.append(res)
-    
-    ress = np.array(ress)
-    np.save(dir4samples + '/samples_'+str(ix+1), ress)
-    print('saved samples!')
-
- 
-
-
-####################################################
-####################################################
-#     
-#ns=10
-#sx=1
-#        
-#def EHE(im, uspat):
-#         
-#     return ns*tUFT(UFT(im,uspat),uspat) 
-#     
-#def AHA (im, uspat):
-#    
-#    tmp1 = im*sx*sx
-#    tmp2 = sx*EHE(im,uspat)
-#    tmp3 = sx*EHE(im,uspat)
-#    tmp4 = EHE(EHE(im, uspat),uspat)         
-#    return tmp1+tmp2+tmp3+tmp4         
-#     
-#def A(im, uspat):
-#    return im*sx + EHE(im,uspat)  
-#
-#def grad(im, mu, uspat):
-#    return AHA(im,uspat) - A(sx*mu, uspat)
-#    
-#def error(im, mu, uspat):
-#     return np.linalg.norm(A(im, uspat) - sx*mu)
-#    
-#     
-#def findgamma(mu, numiter = 10, alpha = 1e-4):  
-#               
-#     its = np.zeros([numiter+1,237,256], dtype=np.complex128)
-#
-#     mu = np.abs(mu)
-#     
-#     
-#     its[0,:,:] = mu.copy()
-#     
-#     
-#     errtmps = []
-#     
-#     for ix in range(numiter):
-#          grdtmp = grad(its[ix,:,:], mu, uspat)
-#          its[ix+1,:,:] =  its[ix,:,:] - alpha*grdtmp      
-#          errtmp = np.linalg.norm(A(its[ix,:,:], uspat) - sx*mu) / np.linalg.norm(mu)*100
-#          errtmps.append( errtmp )
-#          print("iter: "+str(ix+1)+" norm grad: " + str(np.linalg.norm(grdtmp)) + " error (%): " +str(errtmp))
-#     
-#     return its[-1,:,:], errtmps
-#
-#
-#alphaval=0.0045
-#it, err = findgamma(ddimc, numiter = 750, alpha = alphaval)
-##errs = []
-##for alpix, alphaval in enumerate(np.linspace(0.016,0.018, 15)):
-##     print(alpix)
-##     it, err = findgamma(ddimc, numiter = 50, alpha = alphaval)
-##     errs.append((alphaval, err[-1]))
-
-
-
-
-
-
-
-
-
-
-
-#plot rmses
-     
-####################################################
-####################################################
-     
-####################################################
-####################################################
-     
-####################################################
-####################################################
-
-analyse = False  
-if analyse:
-         
-     usfact = 3
-     R=3
-     
-     
-     base = 'sess_23_05_2018/EK/'
-     recon_base = '/usr/bmicnas01/data-biwi-01/ktezcan/reconsampling/MAPestimation/usz_images/'+base
-     
-     
-     dirbase = '/usr/bmicnas01/data-biwi-01/ktezcan/measured_data/measured2/the_h5_files/'+base
-     sli= args.sli
-     
-     import h5py
-     f = h5py.File(dirbase+'ddr_sl'+str(sli)+'.h5', 'r')
-     ddr = np.array((f['DS1']))
-     f = h5py.File(dirbase+'ddi_sl'+str(sli)+'.h5', 'r')
-     ddi = np.array((f['DS1']))
-     
-     dd= ddr+1j*ddi
-     dd=np.transpose(dd)
-     #          dd=np.transpose(dd,axes=[1,0,2])
-     dd=np.rot90(dd,3)
-     
-     dd = np.fft.ifftn(np.fft.fftshift(np.fft.fftn(dd,axes=[0,1]),axes=[0,1]),axes=[0,1])
-     
-     
-     
-     f = h5py.File(dirbase+'espsi_sl'+str(sli)+'.h5', 'r')
-     espsi = np.array((f['DS1']))
-     f = h5py.File(dirbase+'espsr_sl'+str(sli)+'.h5', 'r')
-     espsr = np.array((f['DS1']))
-     
-     esps= espsr+1j*espsi
-     esps = np.transpose(esps)
-     #               esps=np.transpose(esps,axes=[1,0,2])
-     esps=np.rot90(esps,3)
-     esps=np.fft.fftshift(esps,axes=[0,1])
-     sensmaps = esps.copy()
-     sensmaps = np.fft.fftshift(sensmaps,axes=[0,1])
-     
-     sensmaps=np.rot90(np.rot90(sensmaps))
-     dd=np.rot90(np.rot90(dd))
-     #          sensmaps=np.swapaxes(sensmaps,0,1)
-     #          dd=np.swapaxes(dd,0,1)
-     
-     
-     
-     #dd = dd[:,:,6:12]
-     #sensmaps=sensmaps[:,:,6:12]
-     
-     ddim=np.fft.ifft2(dd,axes=[0,1])
-     
-     
-     sensmaps=sensmaps/np.tile(np.sqrt(np.sum(sensmaps*np.conjugate(sensmaps),axis=2))[:,:,np.newaxis],[1, 1, sensmaps.shape[2]])
-     
-     ddimc = tFT(dd)
-     dd=dd/np.percentile(  np.abs(ddimc).flatten()   ,99)
-     ddimc = tFT(dd)
-     
-     
-     
-     try:
-          uspat = np.load(recon_base + 'uspat_us'+str(R)+'_sli'+str(sli)+'.npy')
-          print("Read from existing u.s. pattern file")
-     except:
-          uspat = USp.generate_opt_US_pattern_1D(dd.shape[0:2], R=R, max_iter=100, no_of_training_profs=15)
-          np.save(recon_base + 'uspat_us'+str(R)+'_sli'+str(sli), uspat)
-          print("Generated a new u.s. pattern file")
-          
-          
-     usksp = dd*np.tile(uspat[:,:,np.newaxis], [1, 1, dd.shape[2]])
-     
-     
-     if True:
-          coil_cov = np.cov(usksp[0:20,int(np.floor(usksp.shape[1]/2))-5:int(np.floor(usksp.shape[1]/2))+5,:].reshape(-1,usksp.shape[2]).T)
-     #     coil_cov = np.diag(np.diag(coil_cov))
-          coil_cov_chol = np.linalg.cholesky(coil_cov)
-          
-          #np.isclose(coil_cov, np.dot(coil_cov_chol, coil_cov_chol.T.conj())).all()
-          
-          coil_cov_chol_inv = np.linalg.inv(coil_cov_chol)
-          
-     #     coil_cov_chol_inv = np.eye(13)
-          
-          
-          
-          
-          usksp_tmp = usksp.reshape([-1, dd.shape[2]]).T
-          mlt = np.tensordot(coil_cov_chol_inv, usksp_tmp, axes=[1,0])
-          usksp_prew = mlt.T.reshape([dd.shape[0], dd.shape[1], dd.shape[2]])
-          
-          
-     
-     
-          coil_cov_usksp_prew = np.cov(usksp_prew[0:20,int(np.floor(usksp_prew.shape[1]/2))-5:int(np.floor(usksp_prew.shape[1]/2))+5,:].reshape(-1,usksp_prew.shape[2]).T)
-          
-          #otherwise there is a problem
-          assert(np.isclose(coil_cov_usksp_prew, np.eye(coil_cov_usksp_prew.shape[0])).all())
-     #     
-     #     usksp_prew_tmp = usksp_prew.reshape([-1, 13]).T
-     #     mlt_prew = np.tensordot(coil_cov_chol_inv.T.conj(), usksp_prew_tmp, axes=[1,0])
-     #     usksp_prew_prew = mlt_prew.T.reshape([237, 256, 13])
-     #     
-     
-          
-          sensmaps_tmp = sensmaps.reshape([-1,  dd.shape[2]]).T
-          sensmaps_mlt = np.tensordot(coil_cov_chol_inv, sensmaps_tmp, axes=[1,0])
-          sensmaps_prew = sensmaps_mlt.T.reshape([dd.shape[0], dd.shape[1], dd.shape[2]])  
-          
-          sensmaps_prew=sensmaps_prew/np.tile(np.sqrt(np.sum(sensmaps_prew*np.conjugate(sensmaps_prew),axis=2))[:,:,np.newaxis],[1, 1, sensmaps_prew.shape[2]])
-          sensmaps = sensmaps_prew.copy()
-          
-          dd_tmp = dd.reshape([-1,  dd.shape[2]]).T
-          dd_mlt = np.tensordot(coil_cov_chol_inv, dd_tmp, axes=[1,0])
-          dd_prew = dd_mlt.T.reshape([dd.shape[0], dd.shape[1], dd.shape[2]])  
-          ddimc_prew = tFT(dd_prew)
-          dd_prew=dd_prew/np.percentile(  np.abs(ddimc_prew).flatten()   ,99)
-          ddimc_prew = tFT(dd_prew)
-     
-          usksp_prew_img = tFT(usksp_prew)
-          usksp_prew=usksp_prew/np.percentile(  np.abs(usksp_prew_img).flatten()   ,99)
-          usksp_prew_img  = tFT(usksp_prew)
-          
-          coil_cov_chol_inv = []
-     
-     #     plt.figure();plt.imshow((np.abs(coil_cov_usksp_prew)))
-     else:
-          coil_cov_chol_inv = []
-          usksp_prew = usksp.copy()
-          sensmaps_prew=sensmaps.copy()
-                                   
-     
+    for ix in range(numfiles):
+        print('reading and processing file '+str(ix+1)+'/'+str(numfiles))
+        print('--------------------------------------------')
+        aa = np.load(  dir4decodersamples + 'samples_'+str(ix+1)+'.npz'   )
+       
+        ims = aa['ims'] #the decoder output sample
         
-     num_iter = 802
-          
-     regtype='reg2'
-     reg=0
-     chunks40=True
-     mode = 'MRIunproc'
-     
-     
-     
-     rmses=np.zeros([2,2,2,num_iter])
-     for ix1, dcprojiter in enumerate([10, 1]):
-          for ix2, onlydciter in enumerate([0, 10]):
-               for ix3, prew in enumerate([0, 1]):
-                                   
-                    
-                   
-                                   
-                    if prew ==0:
-                         im2comp = ddimc
-                    else:
-                         im2comp = ddimc_prew
-                    
-                    
-                    try:
-                         print(dcprojiter, onlydciter, prew)
-                         rec_vae = pickle.load( open(recon_base +  'rec_us'+str(R)+'_sli'+str(sli)+'_dcprojiter_'+str(dcprojiter)+'_onlydciter_'+str(onlydciter)+'_prew'+str(prew) ,'rb'))
-                    except:
-                         print("could not load the file")
-                    rec_vae = rec_vae.reshape([ddimc.shape[0], ddimc.shape[1], num_iter])
-                    
-                    mask = np.abs(ddimc_prew)>0.1
-                    
-                    for ix in range(num_iter):
-                         rmses[ix1, ix2, ix3, ix] = calc_rmse(np.abs(mask*rec_vae[:,:,ix])*np.linalg.norm(mask*np.abs(im2comp))/np.linalg.norm(mask*np.abs(rec_vae[:,:,ix])), mask*np.abs(im2comp))
-          
-     plt.figure();
-     for ix1, dcprojiter in enumerate([10, 1]):
-          for ix2, onlydciter in enumerate([0, 10]):
-               for ix3, prew in enumerate([0, 1]):
-                    plt.plot(rmses[ix1,ix2,ix3,:]);
-     plt.legend(['dc_proj: 10 only_dc: 0 pre-whit: 0', 
-     'dc_proj: 10 only_dc: 0 pre-whit: 1',  
-     'dc_proj: 10 only_dc: 10 pre-whit: 0',  
-     'dc_proj: 10 only_dc: 10 pre-whit: 1',  
-     'dc_proj: 1 only_dc: 0 pre-whit: 0',  
-     'dc_proj: 1 only_dc: 0 pre-whit: 1',  
-     'dc_proj: 1 only_dc: 10 pre-whit: 0',  
-     'dc_proj: 1 only_dc: 10 pre-whit: 1' ], prop={'size': 26})                    
-     
-     
-     for ix1, dcprojiter in enumerate([10, 1]):
-          for ix2, onlydciter in enumerate([0, 10]):
-               for ix3, prew in enumerate([0, 1]):
-                    print("'dc_proj: "+str(dcprojiter)+" only_dc: "+str(onlydciter)+" pre-whit: "+str(prew)+"',\ ")
-     
-     
-     
+        ress = []
+        for ixim in range(0,ims.shape[0],10): # take only one tenth of the decoder smaples to save time
+            print('processing sample '+str(int(ixim/10)+1)+'/'+str(int(ims.shape[0]/10)))
+            res = funmin_cg_ksp(np.abs(ims[ixim]), uspat, estim_ksp_ns, nssx, usksp_prew , n4biasfield, numiter=10)[0][-1]
+            res = np.abs(tFT(res))
+            ress.append(res)
+        
+        ress = np.array(ress)
+        np.save(dir4samples + '/samples_'+str(ix+1), ress)
+        print('saved samples!')
+
+
+
+
+###############################################################################
+### Now look at these samples
+###############################################################################
+if visualize:
+    
+    samps = []
+    for ix in range(numfiles):
+        samps.append(np.load(dir4samples + 'samples_'+str(ix+1)+'.npy'))
+    
+    samps = np.array(samps)
+    samps = np.reshape(samps, [-1, samps.shape[2], samps.shape[3]])
+    
+    
+    mean_samples = samps.mean(axis = 0)
+    std_samples = samps.std(axis = 0)
+    
+    plt.figure();
+    for ix in range(50):
+        rr = np.random.randint(0,samps.shape[0])
+        plt.imshow(np.abs(samps[rr]), vmin = 0, vmax = 1.2);plt.title('Sample no: ' + str(rr))
+        plt.pause(0.1)
+        
+    plt.figure();plt.imshow(np.abs(tFT(dd_prew)), vmin = 0, vmax = 1.2);plt.title('Original image')
+    plt.figure();plt.imshow(np.abs(rec_vae[:,0].reshape([dd.shape[0], dd.shape[1]])), vmin = 0, vmax = 1.2);plt.title('Zero-filled image')
+    plt.figure();plt.imshow(np.abs(mean_samples), vmin = 0, vmax = 1.2);plt.title('Mean of samples')
+    plt.figure();plt.imshow(np.abs(std_samples));plt.title('Std of samples')
+
+
+ 
+
+
      
