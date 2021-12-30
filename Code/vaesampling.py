@@ -43,7 +43,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      # usksp = usksp
      uspat = (np.abs(usksp)>0)
      
-     print(biasfield)
+#     print(biasfield)
      if biasfield.all()==-1:
           biasfield = np.ones([usksp.shape[0], usksp.shape[1]])
           
@@ -51,8 +51,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
           print("KCT-error: biasfield cannot be complex!")
           assert ValueError
           
-     print("biasfield shape:")
-     print(biasfield.shape)
+     print("KCT-info: biasfield shape: " + str(biasfield.shape))
      
      if nsksp_manual==-1:
           #calculate the ns value here. For this you need to measure the k-space noise
@@ -110,7 +109,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
 #     from definevae_2d_v1_mri_nocov_fullim_conz_homodyn_f import definevae_2d_v1_mri_nocov_fullim_conz_homodyn_f
      
      
-     print("rollval value in vaesampling: " + str(rollval))
+     print("KCT-info: rollval value in vaesampling: " + str(rollval))
      
      
      starttime1 = time.time() 
@@ -374,7 +373,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      # around 2e-3...
      #-----------------------------------------------
      
-     print(time.time()- starttime1)    
+#     print(time.time()- starttime1)    
      
      
           
@@ -383,7 +382,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      zsc = enc_muv[0,:,:,:].copy()
      
      
-     print(time.time()- starttime1)
+#     print(time.time()- starttime1)
      
      acceptance = []
      p1s = []
@@ -417,7 +416,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
           
          #first do a scale estimation and use this for the sampling 
          optimalscalev, optimalscale_tmp1v, optimalscale_tmp2v, ttt11v, ttt12v = sess.run([ optimalscalef, optimalscale_tmp1f, optimalscale_tmp2f, ttt11f, ttt12f], feed_dict={x_inp: np.zeros([5,mapim.shape[0],mapim.shape[1]]), z_samples: np.tile((zsc)[np.newaxis,:,:],[5,1,1,1]), uspattff: uspat[:,:,0], sensmapsplf:sensmaps, yy:usksp, phaseimf:mapphase, sclfactorf:[1+0*1j], biasfieldtf: biasfield})
-         print("optimal scale value is: :")   
+         print("KCT-info: optimal scale value is: :")   
          print(optimalscalev)
 #         print("tmp scale value 1 is: :")   
 #         print(optimalscale_tmp1v)
@@ -557,7 +556,7 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
          print("u: "+str(u)+", alpha: "+str(alpha)+", accept ratio: " + str(acceptctr/(ix+1)) + " scale value: " + str(np.real(sclfct_cur)))
          
          if np.abs(errtmpfv)>0.1:
-              print("WARNING!!! High inversion error") 
+              print("KCT-warn: WARNING!!! High inversion error") 
          
          if ix % 200==0:
               print(acceptance)
@@ -573,13 +572,12 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
 #              print("NOT SAVING!!!!!!!!")               
          
          if ix % saveevery == 0: 
-              print("SAVED!")
               np.savez(directoryname+'/samples_'+str(int(np.floor(ix/saveevery))), \
                        ims=ims, p1s=p1s, q1s=q1s, acceptance=acceptance,\
                        mupSmups=mupSmups, pzs=pzs, full1s=full1s, full2s=full2s,\
                        full3s=full3s, p_y_xs=p_y_xs, grd_pz_norms=grd_pz_norms, \
                        grd_pyz_pz_norms=grd_pyz_pz_norms, zscs=zscs, sclfct_curs=sclfct_curs, nsksp = nsksp) # , gammavs=gammavs
-              
+              print("KCT-info: SAVED!")
               
               del ims
               ims=[]
@@ -595,9 +593,9 @@ def vaesampling(usksp, sensmaps, maprecon, mapphase, directoryname, step = 1e-3,
      print(errtmpfvs)
     
      acceptanceratios.append(   np.sum(np.array(acceptance))/len(acceptance)   )
-     print(">>> step: "+str(step) +", accept ratio: " + str(np.sum(np.array(acceptance))/len(acceptance)))
+     print("KCT-info: >>> step: "+str(step) +", accept ratio: " + str(np.sum(np.array(acceptance))/len(acceptance)))
      
-     print("acceptance ratios are until now: ")
+     print("KCT-info: acceptance ratios are until now: ")
      print(acceptanceratios)
                
      return 0

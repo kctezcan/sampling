@@ -8,9 +8,6 @@ os.chdir(scriptdir)
 
 def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False, mode=[], chunks40=False, Melmodels=False):
 
-
-     print("---- came here a")
-     
      import tensorflow as tf
      
 #     config=tf.ConfigProto()
@@ -43,30 +40,11 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
      input_dim=ndims*ndims
      fcl_dim=500 
      
-#     print("---- came here a2")
-     
-     print(">>> lat_dim value: "+str(lat_dim))
-     print(">>> mode is: " + mode)
-          
      lat_dim_1 = max(1, np.floor(lat_dim/2))
      
-#     if user=='Kerem':
-##          print("---- came here a2_1")
-#          os.environ["CUDA_VISIBLE_DEVICES"] = os.environ['SGE_GPU']
-##          print("---- came here a2_2")
-#          from tensorflow.python.client import device_lib
-##          print("---- came here a2_3")
-#          print (device_lib.list_local_devices())
-##          print("---- came here a2_4")
-#          
-#          print( os.environ['SGE_GPU'])
-          
-#     print("---- came here a3")     
      
      
      num_inp_channels=1
-     
-#     print("---- came here b")
      
      #make a simple fully connected network
      #==============================================================================
@@ -88,7 +66,6 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
      #define the network layer parameters
      intl=tf.truncated_normal_initializer(stddev=std_init, seed=SEED)
      
-#     print("---- came here c")
      
      with tf.variable_scope("VAE") as scope:
          enc_conv1_weights = tf.get_variable("enc_conv1_weights", [3, 3, num_inp_channels, 32], initializer=intl)
@@ -128,8 +105,6 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
               
          else:        
               pass
-     
-#     print("---- came here d")
      
      ######## TWO LAYER 
      # a. build the encoder layers
@@ -172,8 +147,7 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
           dec_L1 = fact(tf.matmul(z, dec_fc1_weights) + dec_fc1_biases)     
      else:
           pass
-      
-#     print("---- came here e")     
+          
      
      dec_L1_reshaped = tf.reshape(dec_L1 ,[batch_size,int(ndims),int(ndims),48])
      
@@ -232,24 +206,16 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
      else:
           train_step = tf.train.AdamOptimizer(5e-3).minimize(loss_tot)
           
-#     print("---- came here f")
-     
      # start session
      #=====================================definevae2=========================================
      #==============================================================================
      
      sess=tf.InteractiveSession()#(config=config)
      
-#     print("---- came here g")
-     
      sess.run(tf.global_variables_initializer())
      print("Initialized parameters")
      
-#     print("---- came here h")
-     
      saver = tf.train.Saver()
-     
-#     print("---- came here j")
      
      # do post-training predictions
      #==============================================================================
@@ -266,7 +232,6 @@ def definevae2(lat_dim=60, patchsize=28,batchsize=50, rescaled=False, half=False
      else:
           raise ValueError
          
-#     print("---- came here k")
      
      #gradient stuff, gd recon etc...
      #==============================================================================

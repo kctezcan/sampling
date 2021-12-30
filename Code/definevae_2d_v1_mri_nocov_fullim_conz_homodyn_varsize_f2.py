@@ -576,7 +576,7 @@ def definevae_2d_v1_mri_nocov_fullim_conz_homodyn_varsize_f2(batch_size=5, im_ks
      
      
      
-     print("KCT-info: restoring")
+     print("KCT-info: restoring model")
      
      print("KCT-info: current directory: " + os.getcwd())
 
@@ -591,58 +591,13 @@ def definevae_2d_v1_mri_nocov_fullim_conz_homodyn_varsize_f2(batch_size=5, im_ks
           saver.restore(sess, os.getcwd() + '/../../trained_models/'+modelname)# 
           print("KCT-info:  Loading legecy model, with Bf corr, low res: " + modelname)
      else:
-          print("I don't have a trined model for settings, except BFCorr=True and lowres=True/False")  
+          print("KCT-error: I don't have a trined model for settings, except BFCorr=True and lowres=True/False")  
           raise ValueError
      
      
      
      print("KCT-info: restored")
      
-     
-#     sess.run(tf.global_variables_initializer())     
-#     print("KCT-info: restoring")
-#     if contleg:
-#          step=2250000
-#          saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_new_noiseprec50_l2prec50_denFalse_step'+str(step))# 
-#          print("WARNING:  >>>  USING Legecy model continued training, step "+str(step))
-#     else:     
-#          if lowres==False:
-#               if highprecmode:
-#                    step=750000 # 150000
-#                    saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_prec4em4_step'+str(step))
-#                    print("WARNING:  >>>  USING "+str(step)+" STEPS TRAINING AND THE BIG DS + AUG MODEL (HIGH RES) + 1e-4 PRECISION  <<< ")
-#               else:
-#                    if usemodelwithprecval==0:
-#                         
-#                         if heterosced ==0:                    
-#                              step=750000 # 150000
-#                              saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_step'+str(step))
-#                              print("WARNING: MODEL LEGACY  >>>  USING "+str(step)+" STEPS TRAINING AND THE BIG DS + AUG MODEL (HIGH RES)  <<< ")
-#                         elif heterosced==1:
-#                              step=900000 # 150000
-#                              saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_heterosced_step'+str(step))
-#                              print("WARNING: MODEL Heteroscedastic 1 >>>  USING "+str(step)+" STEPS TRAINING AND THE BIG DS + AUG MODEL (HIGH RES)  <<< ")
-#                         elif heterosced==2:
-#                              step=900000 # 150000
-#                              saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_heterosced2_step'+str(step))
-#                              print("WARNING: MODEL Heteroscedastic 2 >>>  USING "+str(step)+" STEPS TRAINING AND THE BIG DS + AUG MODEL (HIGH RES)  <<< ")
-#                         else:
-#                              pass
-#                    else:
-#                         if denoising==True:
-#                              step=600000 # 150000
-#                              saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_noiseprec'+str(usemodelwithprecval)+'_denTrue_step'+str(step))
-#                              print("WARNING:  >>>  USING  AAAAAAAAAAaa")                    
-#                         else:
-#                              step=700000 # 150000
-#                              saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_new_noiseprec'+str(usemodelwithprecval)+'_denFalse_step'+str(step))
-#                              print("WARNING:  >>>  USING "+str(step)+" STEPS TRAINING AND THE BIG DS + AUG MODEL (HIGH RES) with precision "+str(usemodelwithprecval)+" <<< ")                    
-#          else:  
-#               step=350000                                                                                                               
-#               saver.restore(sess, '/scratch_net/bmicdl02/modelrecon_2d/models/cvae2d_mri_s14k19_fullconv_nocov_fullim_conz33_homodyn_60ulargedec_252x308_xb5_lat60_varsize_bigDS_aug_res1mm_step'+str(step))
-#               print("WARNING:  >>>  USING "+str(step)+" STEPS TRAINING AND THE BIG DS + AUG MODEL (LOW RES 1mm)  <<< ")
-#   
-#     print("KCT-info: restored")
      
      phaseim = tf.placeholder("complex64", shape=[kspsize[0],kspsize[1]], name="phaseimpl") # pl4
 
@@ -753,7 +708,7 @@ def definevae_2d_v1_mri_nocov_fullim_conz_homodyn_varsize_f2(batch_size=5, im_ks
      
      
      
-     print("shape of what goes into the inversion: ")
+#     print("shape of what goes into the inversion: ")
      print(tf.cast(dec_mu[0,:,:,0],dtype=tf.complex64).shape)
      
      # make here the iterative solution network
@@ -810,8 +765,8 @@ def definevae_2d_v1_mri_nocov_fullim_conz_homodyn_varsize_f2(batch_size=5, im_ks
      
      dbgim = tf.placeholder(tf.complex64, shape = imgsize, name="dbgim")
      
-     print("dbgim shape: ")
-     print(dbgim.shape)
+#     print("dbgim shape: ")
+#     print(dbgim.shape)
      
      ufttf = FT_tf(dbgim) # A_tf(dbgim)
 #     bb = tFT_tf(FT_tf(tf.cast(dec_mu[0,:,:,0], tf.complex64))) # tFT_tf( )

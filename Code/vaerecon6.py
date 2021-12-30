@@ -142,23 +142,6 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           
           mueval = mu.eval(feed_dict={x_rec: np.tile(usabs,(nsampl,1)) }) # ,x_inp: np.tile(usabs,(nsampl,1))
           
-          
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-#          print(mueval)
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-#          print(mueval.shape)
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-#          print(len(mueval))
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-          
           stdeval = std.eval(feed_dict={x_rec: np.tile(usabs,(nsampl,1)) }) # ,x_inp: np.tile(usabs,(nsampl,1))
           
           zvals = mueval + np.random.rand(mueval.shape[0],mueval.shape[1])*stdeval
@@ -425,11 +408,11 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
               
               res = sop.minimize_scalar(lambda alpha: reg2eval(ims[:,:,ix].flatten() + alpha * currgrd   ), method='Golden'    )
               alphaopt = res.x
-              print("optimal alpha: " + str(alphaopt) )
+              print("KCT-dbg: optimal alpha: " + str(alphaopt) )
                
               ims[:,:,ix+1] = ims[:,:,ix] + alphaopt*currgrd.reshape([252,308]) # *alpha*np.real(1j*np.exp(-1j*ims[:,:,ix])*    fdivg(fgrad(np.exp(  1j* ims[:,:,ix]    )))     )
               regval = reg2eval(ims[:,:,ix+1].flatten())
-              print("regval: " + str(regval) )
+              print("KCT-dbg: regval: " + str(regval) )
              
           return ims[:,:,-1]-np.pi 
 
@@ -465,7 +448,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
      trpat = np.zeros_like(uspat)
      trpat[:,120:136] = 1
           
-     print(uspat)
+#     print(uspat)
      
      
           
@@ -517,7 +500,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
      
      pickle.dump(recs[:,0],open('/home/ktezcan/unnecessary_stuff/init','wb'))
 
-     print('contRec is ' + contRec)
+     print('KCT-info: contRec is ' + contRec)
      if contRec != '':
           try:
                print('KCT-INFO: reading from a previous pickle file '+contRec)
@@ -600,7 +583,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
            tmpatv = tmpa.copy().flatten()
            
            if reglmb == 0:
-                print("skipping phase proj")
+                print("KCT-info: skipping phase proj")
                 tmpptv=tmpp.copy().flatten()
            else:
                 if regtype=='TV':
@@ -624,6 +607,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
                      print("KCT-dbg: pahse reg value is " + str(regval))
                 else:
                      print("hey mistake!!!!!!!!!!")
+                     raise ValueError
            
            
            recs[:,it+12] = tmpatv*np.exp(1j*tmpptv)
@@ -673,273 +657,6 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           
           
      return recs, 0, phaseregvals, n4biasfields
-
-
-
-     
-#     for it in range(numiter-1):
-#          
-#          
-#          if it > onlydciter:
-#               alpha=alphas[it]
-#          
-#               ftot, f_lik, f_dc = feval(recs[:,it])
-#               gtot, g_lik, g_dc = geval(recs[:,it])
-#               
-#               print("it no: " + str(it) + " f_tot= " + str(ftot) + " f_lik= " + str(f_lik) + " f_dc (1e6)= " + str(f_dc/1e6) + " |g_lik|= " + str(np.linalg.norm(g_lik)) + " |g_dc|= " + str(np.linalg.norm(g_dc)) )
-#               
-#               recs[:,it+1]=recs[:,it] - alpha* g_lik
-#                   
-#     #          recs[:,it+1]=np.abs(recs[:,it+1])*np.exp(1j*truephase).flatten()
-#     #          print('abs proj!')
-#     #          recs[:,it+1]=np.abs(recs[:,it+1])
-#                   
-#          else:
-#               print("no prior proj!")
-#
-#          #do the DC projection every N iterations    
-#          if it % dcprojiter == 0:
-#
-#               tmp1 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (1-uspat)  )
-#               tmp2 = UFT(np.reshape(recs[:,it+1],[imsizer,imrizec]), (uspat)  )
-#               tmp3= data*uspat[:,:,np.newaxis]
-#
-#
-#               tmp=tmp1 + multip*tmp2 + (1-multip)*tmp3
-#               recs[:,it+1] = tFT(tmp).flatten()
-#               
-#               
-#
-#               ftot, f_lik, f_dc = feval(recs[:,it+1])
-#               print('f_dc (1e6): ' + str(f_dc/1e6) + '  perc: ' + str(100*f_dc/np.linalg.norm(data)**2))
-         
-          
-     
-     
-     
-     
-
-
-
-
-def ADMM_recon(imo, usfact2us, usfactnet):
-
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imorig.mat', {'im_ori': imo})
-     
-     print("starting the ADMMNet recon")
-     
-     pars = (" 5*77, "
-     "clear all;"
-     "global usfact2us; "
-     "global usfactnet; "
-     "usfact2us = " + str(usfact2us) + "; "
-     "usfactnet = " + str(usfactnet) + "; "
-     "cd '/home/ktezcan/Code/from_other_people/Deep-ADMM-Net-master/Deep-ADMM-Net-master', " 
-     "main_ADMM_Net_test_3, "
-     ""
-     "exit ")
-     
-     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-     
-#     print(proc.stdout)
-     
-     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/rec_image.mat')
-     imout_admm = r['rec_image']
-     
-     
-     print("ADMMNet recon ended")
-     
-     return imout_admm
-
-
-def TV_recon(imo, uspat):
-     
-     
-     print("starting the BART TV recon")
-     
-     import subprocess
-     
-     path = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00/python"
-     os.environ["TOOLBOX_PATH"] = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00"
-     sys.path.append(path);
-     
-     from bart import bart
-     import cfl
-
-     
-     #uspatf = pickle.load(open('/home/ktezcan/modelrecon/recon_results/j_pat_'+flname,'rb'))
-     
-     print("writing cfl files")
-     
-     #cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp',  data )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp',  np.fft.fftshift(np.fft.fft2( (imo)))*uspat /np.sum(np.abs(imo)) )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/sens', np.ones(imo.shape))
-     
-     #proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R I:0:0.045 -R T:3:0:0.025 -u1 -C20 -i500 -d4 \
-     
-     print("cfl files written")
-                             
-     proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R T:3:0:0.0075 -u1 -C20 -i4500 -d4 \
-                             /scratch_net/bmicdl02/Data/test/ksp /scratch_net/bmicdl02/Data/test/sens \
-                             /scratch_net/bmicdl02/Data/test/imout"], stdout=subprocess.PIPE, shell=True)
-     
-     imout_tv=np.fft.ifftshift(cfl.readcfl('/scratch_net/bmicdl02/Data/test/imout'))
-     imout_tv = imout_tv * np.sum(np.abs(imo))/np.sum(np.abs(imout_tv))
-     
-     print('BART TV recon ended')
-     
-     return imout_tv
-
-def TV_reconu(usksp, uspat):
-     
-     
-     print("starting the BART TV recon")
-     
-     import subprocess
-     
-     path = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00/python"
-     os.environ["TOOLBOX_PATH"] = "/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00"
-     sys.path.append(path);
-     
-     from bart import bart
-     import cfl
-
-     
-     #uspatf = pickle.load(open('/home/ktezcan/modelrecon/recon_results/j_pat_'+flname,'rb'))
-     
-     print("writing cfl files")
-     
-     #cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp',  data )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/ksp', usksp )  
-     cfl.writecfl('/scratch_net/bmicdl02/Data/test/sens', np.ones(usksp.shape))
-     
-     #proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R I:0:0.045 -R T:3:0:0.025 -u1 -C20 -i500 -d4 \
-     
-     print("cfl files written")
-                             
-     proc = subprocess.run(["/scratch_net/bmicdl02/ktezcan/apps/BART/source-bart/bart-0.4.00//bart pics -R T:3:0:0.0075 -u1 -C20 -i4500 -d4 \
-                             /scratch_net/bmicdl02/Data/test/ksp /scratch_net/bmicdl02/Data/test/sens \
-                             /scratch_net/bmicdl02/Data/test/imout"], stdout=subprocess.PIPE, shell=True)
-     
-     imout_tv=np.fft.ifftshift(cfl.readcfl('/scratch_net/bmicdl02/Data/test/imout'))
-     
-     
-     print('BART TV recon ended')
-     
-     return imout_tv
-
-
-#do the matlab DLMRI recon
-#=======================================================================
-#=======================================================================
-#=======================================================================
-#=======================================================================
-#=======================================================================
-
-def DLMRI_recon(imo, uspat):
-     
-     def FT (x):
-          #inp: [nx, ny]
-          #out: [nx, ny]
-          return np.fft.fftshift(    np.fft.fft2(  x , axes=(0,1)  ),   axes=(0,1)    )
-     
-     def UFT(x, uspat):
-          #inp: [nx, ny], [nx, ny]
-          #out: [nx, ny]
-          
-          return uspat*FT(x)
-     
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/uspat.mat', {'Q1': uspat})
-     dd=UFT(np.fft.fftshift(imo), uspat)
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imku.mat', {'imku': dd})
-     
-     pars = (" 5*77, "
-     "clear all;"
-     "DLMRIparams.num = 100; " 
-     "DLMRIparams.nu = 100000; "
-     "DLMRIparams.r = 2; "
-     "DLMRIparams.n = 36; "
-     "DLMRIparams.K2 = 36; "
-     "DLMRIparams.N = 200*36; "
-     "DLMRIparams.T0 = round((0.2)*DLMRIparams.n); "
-     "DLMRIparams.KSVDopt = 2; "
-     "DLMRIparams.thr = (0.023)*[2 2 2 2 1.4*ones(1,DLMRIparams.num-4)]; "
-     "DLMRIparams.numiterateKSVD = 15; "
-     "load '/home/ktezcan/unnecessary_stuff/uspat.mat' , "
-     "load '/home/ktezcan/unnecessary_stuff/imku.mat' , "
-     #"disp('CAME HERE 3'), "
-     "addpath '/home/ktezcan/Code/from_other_people/DLMRI/DLMRI_v6/', "
-     "[imo, ps] = DLMRI(imku,Q1,DLMRIparams,0,[],0);"
-     "imo = ifftshift(imo), "
-     "5*7, "
-     #"disp('CAME HERE 4'), "
-     "save '/home/ktezcan/unnecessary_stuff/imotestback.mat','imo', "
-     "exit ")
-     
-     print("starting the DLMRI recon")
-     
-     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-     
-     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/imotestback.mat')
-     imout_dlmri = np.fft.fftshift(r['imo'])
-     
-     imout_dlmri = imout_dlmri * np.linalg.norm(imo) / np.linalg.norm(imout_dlmri)
-          
-     print('DLMRI recon ended')
-     
-     return imout_dlmri
-#
-#
-#def ADMM_recon(imo, usfact):
-#
-#     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imorig.mat', {'im_ori': imo})
-#     
-#     print("starting the ADMMNet recon")
-#     
-#     pars = (" 5*77, "
-#     "clear all;"
-#     "global usrat; "
-#     "usrat = " + str(usfact) + "; "
-#     "cd '/home/ktezcan/Code/from_other_people/Deep-ADMM-Net-master/Deep-ADMM-Net-master', " 
-#     "main_ADMM_Net_test_2, "
-#     ""
-#     "exit ")
-#     
-#     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-#     
-#     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/rec_image.mat')
-#     imout_admm = r['rec_image']
-#     
-#     
-#     print("ADMMNet recon ended")
-#     
-#     return imout_admm
-
-def BM3D_MRI_recon(imo, uspat):
-
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/imorig.mat', {'im_ori': imo})
-     scipy.io.savemat('/home/ktezcan/unnecessary_stuff/mask.mat', {'Q1': np.fft.fftshift(uspat) })
-     
-     print("starting the BM3D MRI recon")
-     
-     pars = (" 5*77, "
-     "cd '/home/ktezcan/Code/from_other_people/BM3D_MRI_toolbox/', " 
-     "BM3D_MRI_v1_kerem, "
-     ""
-     "exit ")
-     
-     proc = subprocess.run([" matlab -nosplash -r '"+ pars + "' "], stdout=subprocess.PIPE, shell=True)
-     
-     r = scipy.io.loadmat('/home/ktezcan/unnecessary_stuff/imout_bm3d.mat')
-     imout_bm3d = r['im_rec_BM3D']
-     
-     imout_bm3d = imout_bm3d * np.sum(np.abs(imo))/np.sum(np.abs(imout_bm3d))
-     
-     print("BM3D MRI recon ended")
-     
-     return imout_bm3d
-
-
 
 
 

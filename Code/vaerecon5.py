@@ -27,7 +27,7 @@ import sys
 def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsize=28, contRec='', parfact=10, num_iter=302, rescaled=False, half=False, regiter=15, reglmb=0.05, regtype='TV', usemeth=1, stepsize=1e-4, optScale=False, mode=[], chunks40=False, Melmodels='', N4BFcorr=False, z_multip=1.0, coil_cov_chol_inv=[]):
      
      
-     print("Reg value is: " + str(reglmb))
+     print("KCT-info: Reg value is: " + str(reglmb))
 
      
      # set parameters
@@ -181,23 +181,6 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
           
           
           mueval = mu.eval(feed_dict={x_rec: np.tile(usabs,(nsampl,1)) }) # ,x_inp: np.tile(usabs,(nsampl,1))
-          
-          
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-#          print(mueval)
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-#          print(mueval.shape)
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
-#          print(len(mueval))
-#          print("===============================================================")
-#          print("===============================================================")
-#          print("===============================================================")
           
           stdeval = std.eval(feed_dict={x_rec: np.tile(usabs,(nsampl,1)) }) # ,x_inp: np.tile(usabs,(nsampl,1))
           
@@ -434,11 +417,11 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
               regval = reg2eval(ims[:,:,ix+1].flatten())
               f_dc = dconst(magim*np.exp(1j*ims[:,:,ix+1])*bfestim)
               
-              print("norm grad reg: " + str(np.linalg.norm(grd_reg)))
-              print("norm grad dc: " + str(np.linalg.norm(grd_dc)) )
+              print("KCT-dbg: norm grad reg: " + str(np.linalg.norm(grd_reg)))
+              print("KCT-dbg: norm grad dc: " + str(np.linalg.norm(grd_dc)) )
               
-              print("regval: " + str(regval))
-              print("fdc: (*1e9) {0:.6f}".format(f_dc/1e9))
+              print("KCT-dbg: regval: " + str(regval))
+              print("KCT-dbg: fdc: (*1e9) {0:.6f}".format(f_dc/1e9))
           
 #          np.save('/home/ktezcan/unnecessary_stuff/phase', ims)
 #          np.save('/home/ktezcan/unnecessary_stuff/grds_reg', grds_reg)
@@ -463,11 +446,11 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
               
               res = sop.minimize_scalar(lambda alpha: reg2eval(ims[:,:,ix].flatten() + alpha * currgrd   ), method='Golden'    )
               alphaopt = res.x
-              print("optimal alpha: " + str(alphaopt) )
+              print("KCT-dbg: optimal alpha: " + str(alphaopt) )
                
               ims[:,:,ix+1] = ims[:,:,ix] + alphaopt*currgrd.reshape([252,308]) # *alpha*np.real(1j*np.exp(-1j*ims[:,:,ix])*    fdivg(fgrad(np.exp(  1j* ims[:,:,ix]    )))     )
               regval = reg2eval(ims[:,:,ix+1].flatten())
-              print("regval: " + str(regval) )
+              print("KCT-dbg: regval: " + str(regval) )
              
           return ims[:,:,-1]-np.pi 
 
@@ -504,7 +487,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
      
      
           
-     print(uspat)
+#     print(uspat)
      
      
           
@@ -554,7 +537,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
      
      pickle.dump(recs[:,0],open('/home/ktezcan/unnecessary_stuff/init','wb'))
 
-     print('contRec is ' + contRec)
+     print('KCT-info: contRec is ' + contRec)
      if contRec != '':
           try:
                print('KCT-INFO: reading from a previous pickle file '+contRec)
@@ -600,7 +583,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
                 tmpatv = tmpa.copy().flatten()
                 
                 if reglmb == 0:
-                     print("skipping phase proj")
+                     print("KCT-info: skipping phase proj")
                      tmpptv=tmpp.copy().flatten()
                 else:
                      if regtype=='TV':
@@ -624,6 +607,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
                           print("KCT-dbg: pahse reg value is " + str(regval))
                      else:
                           print("hey mistake!!!!!!!!!!")
+                          raise ValueError
                 
 #                tmpatv=tikh_proj(tmpa, niter=100, alpha=0.05).flatten()
 #                tmpptv=tikh_proj(tmpp, niter=100, alpha=0.05).flatten()
@@ -667,7 +651,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
 #               recs[:,it+1]=np.abs(recs[:,it+1])
                    
           else:   
-               print('skipping prior proj for the first onlydciters iter.s, doing only phase proj (then maybe DC proj as well) !!!')
+               print('KCT-info: skipping prior proj for the first onlydciters iter.s, doing only phase proj (then maybe DC proj as well) !!!')
                recs[:,it+1]=recs[:,it].copy()
                
                tmpa=np.abs(np.reshape(recs[:,it+1],[imsizer,imrizec]))
@@ -677,7 +661,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
                tmpatv = tmpa.copy().flatten()
                 
                if reglmb == 0:
-                     print("skipping phase proj")
+                     print("KCT-info: skipping phase proj")
                      tmpptv=tmpp.copy().flatten()
                      
                else:
@@ -697,6 +681,7 @@ def vaerecon(us_ksp_r2, sensmaps, dcprojiter, onlydciter=0, lat_dim=60, patchsiz
                           print("KCT-dbg: pahse reg value is " + str(regval))
                     else:
                           print("hey mistake!!!!!!!!!!")
+                          raise ValueError
                 
 #                tmpatv=tikh_proj(tmpa, niter=100, alpha=0.05).flatten()
 #                tmpptv=tikh_proj(tmpp, niter=100, alpha=0.05).flatten()

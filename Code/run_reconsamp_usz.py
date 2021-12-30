@@ -18,7 +18,6 @@ import argparse
 ### 3. the samples from the proper posterior
 ############################################################################### 
 
-run_reconstruction = False
 run_decoder_sampling = False
 run_proper_sampling = True
 visualize = False
@@ -263,16 +262,15 @@ onlydciter=0
 chunks40=True
 mode = 'MRIunproc'
 
-if run_reconstruction:
-    
-    # reconstruct the image if it does not exist     
-    if os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact)):
-        print("KCT-info: reconstruction already exists, loading it...")
-        rec_vae = pickle.load(open('../../results/usz/reconstruction/rec_usz_us'+str(usfact),'rb'))
-    else:    
-        rec_vae = vaerecon5.vaerecon(usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter, onlydciter=onlydciter,lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
-        pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
-        rec_vae = rec_vae[0]
+
+# reconstruct the image if it does not exist     
+if os.path.exists(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact)):
+    print("KCT-info: reconstruction already exists, loading it...")
+    rec_vae = pickle.load(open('../../results/usz/reconstruction/rec_usz_us'+str(usfact),'rb'))
+else:    
+    rec_vae = vaerecon5.vaerecon(usksp_prew, sensmaps=sensmaps_prew, dcprojiter=dcprojiter, onlydciter=onlydciter,lat_dim=lat_dim, patchsize=ndims, contRec='' ,parfact=25, num_iter=num_iter, regiter=10, reglmb=reg, regtype=regtype, half=True, mode=mode, chunks40=chunks40)
+    pickle.dump(rec_vae[0], open(os.getcwd() + '/../../results/usz/reconstruction/rec_usz_us'+str(usfact) ,'wb')   )
+    rec_vae = rec_vae[0]
 
 
 
