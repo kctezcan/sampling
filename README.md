@@ -18,6 +18,8 @@ Here we show the results for the proposed l-MALA method as well as the compared 
 ![plot](./gifs/gif_vol4_usfact5_kspns0.gif)
 
 ## Code
+You can use the respective requirements file for creating an environment.
+
 ### Folder structure
 The code is published here as well. It assumes such a folder structure: 
 ```
