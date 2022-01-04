@@ -170,7 +170,7 @@ def resizebatch(btch, factor=0.7):
 
 #get the undersampling factor as input
 parser = argparse.ArgumentParser(prog='PROG')
-parser.add_argument('--usfact', type=float, default=3)
+parser.add_argument('--usfact', type=float, default=5)
 args=parser.parse_args()
 usfact = args.usfact
 
@@ -214,7 +214,7 @@ ndims=28
 lat_dim=60
 mode = 'MRIunproc'
 
-numiter = 102
+numiter = 602
 
 # reconstruct the image if it does not exist
 if os.path.exists(os.getcwd() + '/../../results/hcp/reconstruction/rec_hcp_us'+str(usfact)):
@@ -244,7 +244,7 @@ usksp=usksp[:,:,np.newaxis]
 
 # get the DDP reconstruction, i.e. the MAP estimate
 lastiter = int((np.floor(rec_vae.shape[1]/13)-2)*13)
-maprecon = rec_vae[:,lastiter].reshape([252, 308])
+maprecon = rec_vae[:,lastiter].reshape([252, 308]) 
 
 
 # get the values for padding later
@@ -359,6 +359,8 @@ for ix in range(num_of_files):
 ###############################################################################
 ### Now look at these samples
 ###############################################################################
+num_of_files = int(numsamp/saveevery)
+
 
 samps = []
 for ix in range(num_of_files):

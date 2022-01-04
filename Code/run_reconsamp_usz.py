@@ -19,7 +19,7 @@ import argparse
 ############################################################################### 
 
 run_decoder_sampling = False
-run_proper_sampling = False
+run_proper_sampling = True
 visualize = True
 
 
