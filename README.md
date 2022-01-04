@@ -18,7 +18,7 @@ Here we show the results for the proposed l-MALA method as well as the compared 
 ![plot](./gifs/gif_vol4_usfact5_kspns0.gif)
 
 ### Shared results as numpy files
-To view the results of the reconstruction and the samples in python without having to run the code, we share here the numpy files to an example from the HCP dataset and the in-house measured dataset. These can be downloaded from: https://polybox.ethz.ch/index.php/s/9uLZaHlgV2MTBDS (around 644.7 MB)
+To view the results of the reconstruction and the sampling in python without having to run the code, we share here the numpy files of two examples, one from the HCP dataset and one from the the in-house measured dataset. These can be downloaded from: https://polybox.ethz.ch/index.php/s/9uLZaHlgV2MTBDS (around 644.7 MB).
 
 ## Code
 You can use the respective requirements file for creating an environment.
