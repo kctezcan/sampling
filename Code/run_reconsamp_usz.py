@@ -150,20 +150,7 @@ def calc_rmse(rec,imorig):
 ### Set parameters
 ###############################################################################
 parser = argparse.ArgumentParser(prog='PROG')
-#parser.add_argument('--sli', type=int, default=3) 
-#parser.add_argument('--base', default="sess_26_07_2018/VA/")  #    #sess_23_05_2018/EK/ # sess_02_07_2018/CK/
 parser.add_argument('--usfact', type=float, default=3) 
-#parser.add_argument('--contrun', type=int, default=0) 
-#parser.add_argument('--skiprecon', type=int, default=1) 
-#parser.add_argument('--runsampling', type=int, default=0) 
-#parser.add_argument('--runsampling_step2', type=int, default=1) 
-#parser.add_argument('--prewhitening', type=int, default=1) 
-#parser.add_argument('--dcprojiter', type=int, default=1)  
-#parser.add_argument('--onlydciter', type=int, default=0)  
-#parser.add_argument('--mask4sampling', type=int, default=1)  
-#parser.add_argument('--numinversioniters', type=int, default=30) 
-#parser.add_argument('--modelprecval', type=float, default=50) 
-#parser.add_argument('--noisemodifier', type=float, default=1) 
 
 args=parser.parse_args()
 print(args)     
