@@ -21,7 +21,12 @@ Here we show the results for the proposed l-MALA method as well as the compared 
 To view the results of the reconstruction and the sampling in python without having to run the code, we share here the numpy files of two examples, one from the HCP dataset and one from the the in-house measured dataset. These can be downloaded from: https://polybox.ethz.ch/index.php/s/9uLZaHlgV2MTBDS (around 644.7 MB).
 
 ## Code
-You can use the respective requirements file for creating an environment.
+### How to use:
+1. Get the repo into your computer/server.
+2. Make an environment using the requirements file, use the minimal_pip with pip to get only the necessary libraries or the other two to get more comprehensive environments (though these might include old libraires and may be more error prone).
+3. Download the trained models from the link below and put them into the location as shown below.
+4. Create the folder structure as shown below.
+
 
 ### Folder structure
 The code is published here as well. It assumes such a folder structure: 
@@ -48,7 +53,7 @@ project
 └─── trained_models/ 
 │    └─── covariances_emp_prior/
 ```
-This structure will otherwise be created to some extent.
+This structure will otherwise be created to some extent, but the code generally needs this structure to read and write files, so would be wise to create these by hand.
 
 ### Trained models
 This repo contains only the contents of the "./sampling/" folder, the rest can be downloaded or generated. The trained models including the parameters of the empirical latent distribution can be downloaded at https://polybox.ethz.ch/index.php/s/KtqM19ttB40hX8R (around 616.9 MB) and should be placed into a folder as shown above.
