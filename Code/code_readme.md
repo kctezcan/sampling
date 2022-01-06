@@ -5,3 +5,4 @@
 4. vaesampling.py: this is the function that runs the decoder output sampling, implementing the l-MALA method, i.e. the MCMC sampling.
 5. definevae2.py: this file creates the VAE graph necessary for the DDP reconstruction and loads its trained weights and returns the necessary parts of the VAE for reconstruction.
 6. definevae_2d_v1_mri_nocov_fullim_conz_homodyn_varsize_f2.py: this file creates the 2D latent space VAE graph necessary for the l-MALA sampling and loads its trained weights and returns the necessary structures from the VAE for the sampling.
+7. Patcher.py: this is a class that aids in creating patches from an image and combining the patches to an image quickly. It is used by the vaereconX.py files as we do the DDP reconstruction patchwise here.
