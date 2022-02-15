@@ -1,13 +1,16 @@
 # Sampling possible reconstructions of undersampled acquisitions in MR imaging
 by Kerem C. Tezcan, Neerav Karani, Christian F. Baumgartner and Ender Konukoglu
 
-All authors are with the Computer Vision Lab, ETH Zürich, Switzerland. CFB is also with the Machine Learning in Medical Image Analysis Group, University of Tübingen.
+All authors are with the Computer Vision Lab, ETH Zürich, Switzerland. CFB is mainly with the Machine Learning in Medical Image Analysis Group, University of Tübingen.
 
 ## Paper
 The main idea is to sampling multiple reconstructions instead of only reconstructing a single image for undersampled MR imaging. This way one can find multiple solutions to the ill-posed inverse problem and can characterize the uncertainty in the solutions as well. Notice that this is a different approach than obtaining model uncertainty by Bayesian networks/dropout or modeling aleatoric uncertainty by predicting errors with heteroscedastic models.
 
 
-The paper is under review. A preprint version can be found here: https://arxiv.org/abs/2010.00042.
+The paper is accepted to IEEE Transactions in Medical Imaging and the online version is here: https://ieeexplore.ieee.org/document/9709768. A preprint version with the appendix together can be found here: https://arxiv.org/abs/2010.00042.
+
+#### The Appendix to the paper
+As the IEEE TMI has a three page limit for the appendix, we publish it under this repo: https://github.com/kctezcan/sampling/blob/main/Appendix.pdf
 
 
 ## Results
